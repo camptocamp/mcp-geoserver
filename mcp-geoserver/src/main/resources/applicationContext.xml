@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+  <bean id="mcpModuleStatus" class="org.geoserver.platform.ModuleStatusImpl">
+    <constructor-arg index="0" value="gs-mcp"/>
+    <constructor-arg index="1" value="GeoServer MCP server"/>
+    <property name="category" value="EXTENSION"/>
+  </bean>
+
+  <bean id="mcpObjectMapper" class="com.fasterxml.jackson.databind.ObjectMapper"/>
+
+  <bean id="mcpSettingsStore" class="org.geoserver.mcp.settings.McpSettingsStore">
+    <constructor-arg ref="geoServer"/>
+  </bean>
+
+  <bean id="mcpGate" class="org.geoserver.mcp.security.McpGate">
+    <constructor-arg ref="geoServerSecurityManager"/>
+  </bean>
+
+  <bean id="mcpHttpClient" class="org.geoserver.mcp.http.GeoServerHttpClient">
+    <constructor-arg ref="geoServer"/>
+    <constructor-arg ref="mcpSettingsStore"/>
+  </bean>
+
+  <bean id="mcpTools" class="org.geoserver.mcp.tools.ToolRegistry" factory-method="all">
+    <constructor-arg ref="catalog"/>
+    <constructor-arg ref="geoServer"/>
+    <constructor-arg ref="mcpHttpClient"/>
+    <constructor-arg ref="mcpObjectMapper"/>
+  </bean>
+
+  <bean id="mcpServerHolder" class="org.geoserver.mcp.server.McpServerHolder" destroy-method="close">
+    <constructor-arg ref="mcpTools"/>
+    <constructor-arg ref="mcpSettingsStore"/>
+    <constructor-arg ref="mcpObjectMapper"/>
+  </bean>
+
+  <bean id="mcpController" class="org.geoserver.mcp.server.McpController">
+    <constructor-arg ref="mcpSettingsStore"/>
+    <constructor-arg ref="mcpGate"/>
+    <constructor-arg ref="mcpServerHolder"/>
+  </bean>
+
+  <bean id="mcpSettingsController" class="org.geoserver.mcp.server.McpSettingsController">
+    <constructor-arg ref="mcpSettingsStore"/>
+    <constructor-arg ref="mcpGate"/>
+    <constructor-arg ref="mcpObjectMapper"/>
+  </bean>
+
+  <bean id="mcpAdminPage" class="org.geoserver.web.MenuPageInfo">
+    <property name="id" value="mcp"/>
+    <property name="titleKey" value="mcp.title"/>
+    <property name="descriptionKey" value="mcp.description"/>
+    <property name="componentClass" value="org.geoserver.mcp.web.McpAdminPage"/>
+    <property name="category" ref="servicesCategory"/>
+    <property name="order" value="900"/>
+  </bean>
+</beans>

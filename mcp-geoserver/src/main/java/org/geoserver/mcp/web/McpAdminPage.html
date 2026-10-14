@@ -1,0 +1,34 @@
+<html xmlns:wicket="http://wicket.apache.org">
+<body>
+<wicket:extend>
+  <form wicket:id="form">
+    <fieldset>
+      <legend><wicket:message key="McpAdminPage.legend">MCP Server</wicket:message></legend>
+      <ul>
+        <li>
+          <label><wicket:message key="McpAdminPage.endpoint">Endpoint</wicket:message></label>
+          <span wicket:id="endpoint"></span>
+        </li>
+        <li>
+          <input type="checkbox" wicket:id="enabled"/>
+          <label><wicket:message key="McpAdminPage.enabled">Enabled</wicket:message></label>
+        </li>
+        <li>
+          <input type="checkbox" wicket:id="verbose"/>
+          <label><wicket:message key="McpAdminPage.verbose">Verbose: include equivalent curl commands in results</wicket:message></label>
+        </li>
+        <li>
+          <label><wicket:message key="McpAdminPage.allowedRoles">Allowed roles (comma separated)</wicket:message></label>
+          <input type="text" wicket:id="allowedRoles" size="60"/>
+        </li>
+        <li>
+          <label><wicket:message key="McpAdminPage.internalBaseUrl">Internal base URL for WMS and GWC calls (optional)</wicket:message></label>
+          <input type="text" wicket:id="internalBaseUrl" size="60"/>
+        </li>
+      </ul>
+    </fieldset>
+    <button type="submit" wicket:id="submit" class="btn btn-primary"><wicket:message key="McpAdminPage.submit">Save</wicket:message></button>
+  </form>
+</wicket:extend>
+</body>
+</html>
