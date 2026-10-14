@@ -1,0 +1,1 @@
+# Jars here are copied into WEB-INF/lib at container start; ./mvnw package drops the extension here, other plugin jars work too.
