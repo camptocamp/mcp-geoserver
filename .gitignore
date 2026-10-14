@@ -2,3 +2,4 @@ target/
 out/
 .idea/
 *.iml
+docker/vanilla/additional_libs/*.jar
