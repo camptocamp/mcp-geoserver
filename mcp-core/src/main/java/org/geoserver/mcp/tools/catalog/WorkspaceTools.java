@@ -19,7 +19,7 @@ public class WorkspaceTools {
     }
 
     public List<GsTool> tools() {
-        return List.of(list(), get());
+        return List.of(list(), get(), create());
     }
 
     GsTool list() {
@@ -53,6 +53,42 @@ public class WorkspaceTools {
                 m.put("stores", stores);
                 m.put("layerCount", catalog.getLayers().stream()
                         .filter(l -> ws.getName().equals(l.getResource().getStore().getWorkspace().getName())).count());
+                return m;
+            }
+        };
+    }
+
+    GsTool create() {
+        return new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_create_workspace", Schema.object()
+                        .string("name", "Workspace name (also the namespace prefix)", true)
+                        .string("namespaceUri", "Namespace URI, defaults to http://<name>", false)
+                        .bool("isolated", "Isolated workspace", false).build())
+                        .description("Create a workspace and its namespace. Returns the existing one with created=false if it already exists.").build();
+            }
+            public Object call(ToolContext ctx, Args args) {
+                String name = args.string("name");
+                String uri = args.string("namespaceUri", "http://" + name);
+                ctx.trace().curl("POST", "/rest/workspaces", "application/json",
+                        "{\"workspace\":{\"name\":\"" + name + "\",\"isolated\":" + args.bool("isolated", false) + "}}");
+                WorkspaceInfo existing = catalog.getWorkspaceByName(name);
+                if (existing != null) {
+                    Map<String, Object> m = Views.workspace(existing, catalog);
+                    m.put("created", false);
+                    return m;
+                }
+                WorkspaceInfo ws = catalog.getFactory().createWorkspace();
+                ws.setName(name);
+                ws.setIsolated(args.bool("isolated", false));
+                org.geoserver.catalog.NamespaceInfo ns = catalog.getFactory().createNamespace();
+                ns.setPrefix(name);
+                ns.setURI(uri);
+                ns.setIsolated(ws.isIsolated());
+                catalog.add(ws);
+                catalog.add(ns);
+                Map<String, Object> m = Views.workspace(ws, catalog);
+                m.put("created", true);
                 return m;
             }
         };

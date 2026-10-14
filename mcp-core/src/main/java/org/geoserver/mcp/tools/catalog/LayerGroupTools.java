@@ -1,5 +1,10 @@
 package org.geoserver.mcp.tools.catalog;
 
+import org.geoserver.catalog.CatalogBuilder;
+import org.geoserver.catalog.LayerInfo;
+import org.geoserver.catalog.StyleInfo;
+import org.geoserver.catalog.WorkspaceInfo;
+import org.geoserver.mcp.tool.ToolException;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +24,7 @@ public class LayerGroupTools {
     }
 
     public List<GsTool> tools() {
-        return List.of(list(), get());
+        return List.of(list(), get(), create());
     }
 
     static String groupPath(String workspace, String name) {
@@ -67,6 +72,50 @@ public class LayerGroupTools {
                 LayerGroupInfo g = Lookups.layerGroup(catalog, ws, args.string("name"));
                 ctx.trace().curl("GET", groupPath(ws, g.getName()) + ".json", null, null);
                 return Views.layerGroup(g);
+            }
+        };
+    }
+
+    GsTool create() {
+        return new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_create_layer_group", Schema.object()
+                        .string("name", "Layer group name", true)
+                        .string("workspace", "Workspace; omit for global", false)
+                        .string("title", "Title", false)
+                        .stringArray("layers", "Ordered layer names, bottom first", true)
+                        .stringArray("styles", "Parallel style names; empty string means the layer's default", false)
+                        .enumeration("mode", "Group mode", false, "SINGLE", "NAMED", "CONTAINER", "EO", "OPAQUE_CONTAINER").build())
+                        .description("Create a layer group and compute its bounds").build();
+            }
+            public Object call(ToolContext ctx, Args args) throws Exception {
+                String name = args.string("name");
+                String workspace = args.string("workspace", null);
+                WorkspaceInfo ws = workspace == null ? null : Lookups.workspace(catalog, workspace);
+                if ((ws == null ? catalog.getLayerGroupByName(name) : catalog.getLayerGroupByName(ws, name)) != null) {
+                    throw new ToolException("Layer group '" + Lookups.qualified(workspace, name) + "' already exists");
+                }
+                List<String> layers = args.strings("layers");
+                if (layers.isEmpty()) throw new ToolException("At least one layer is required");
+                List<String> styles = args.strings("styles");
+                LayerGroupInfo g = catalog.getFactory().createLayerGroup();
+                g.setName(name);
+                g.setWorkspace(ws);
+                if (args.has("title")) g.setTitle(args.string("title"));
+                if (args.has("mode")) g.setMode(LayerGroupInfo.Mode.valueOf(args.string("mode")));
+                for (int i = 0; i < layers.size(); i++) {
+                    LayerInfo l = Lookups.layer(catalog, layers.get(i));
+                    g.getLayers().add(l);
+                    String sn = i < styles.size() ? styles.get(i) : "";
+                    StyleInfo s = sn.isBlank() ? null : catalog.getStyleByName(sn);
+                    if (!sn.isBlank() && s == null) throw new ToolException("Style '" + sn + "' not found");
+                    g.getStyles().add(s);
+                }
+                new CatalogBuilder(catalog).calculateLayerGroupBounds(g);
+                ctx.trace().curl("POST", ws == null ? "/rest/layergroups" : "/rest/workspaces/" + ws.getName() + "/layergroups",
+                        "application/json", Views.json(Map.of("layerGroup", Map.of("name", name, "layers", Map.of("layer", layers)))));
+                catalog.add(g);
+                return Views.layerGroup(ws == null ? catalog.getLayerGroupByName(name) : catalog.getLayerGroupByName(ws, name));
             }
         };
     }
