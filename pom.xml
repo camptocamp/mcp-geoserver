@@ -13,6 +13,7 @@
   <modules>
     <module>mcp-core</module>
     <module>mcp-geoserver</module>
+    <module>mcp-geoserver-cloud</module>
   </modules>
 
   <properties>
