@@ -38,7 +38,39 @@ Tests extending `GeoServerSystemTestSupport` are JUnit 4 (`org.junit.Test`). Eve
 
 ## Tool catalogue
 
-Filled in as tools land. Format: name, arguments, returns.
+Every tool also accepts `verbose: boolean` and declares MCP annotations (read-only, destructive, idempotent) from `ToolHints`.
+
+Read
+- `gs_status()`: versions, proxy base URL, counts
+- `gs_list_workspaces()`, `gs_get_workspace(name)`
+- `gs_list_stores(workspace?)`, `gs_get_store(workspace, name)`
+- `gs_list_layers(workspace?)`, `gs_get_layer(name)`
+- `gs_list_styles(workspace?)`, `gs_get_style(name, workspace?)` returns the style body
+- `gs_list_layer_groups(workspace?)`, `gs_get_layer_group(name, workspace?)`
+
+Discovery
+- `gs_list_store_types(kind?)`: runtime list from GeoTools, vector with parameter descriptors, raster with url
+- `gs_list_modules()`: ModuleStatus beans
+
+Write
+- `gs_create_workspace(name, namespaceUri?, isolated?)`
+- `gs_create_store(workspace, name, type, params)`: PostGIS stores also return privilege `warnings`
+- `gs_publish_layer(workspace, store, nativeName?, name?, title?, srs?)`
+- `gs_update_layer(name, title?, abstract?, defaultStyle?, styles[]?, enabled?, advertised?)`
+- `gs_put_style(name, workspace?, body, format?)`: format `sld` by default, `css`, `ysld`, `mbstyle` with their extension
+- `gs_create_layer_group(name, workspace?, title?, layers[], styles[]?, mode?)`
+- `gs_delete(kind, workspace?, name, recurse?)`
+- `gs_reload()`
+
+Data
+- `gs_query_features(layer, cql?, bbox[]?, properties[]?, maxFeatures?)` returns GeoJSON
+- `gs_get_map(layers[], bbox[], width, height, srs?, styles[]?, format?, transparent?)` returns an image
+
+GeoWebCache (via GWC REST over HTTP)
+- `gs_gwc_list_tile_layers()`, `gs_gwc_get_tile_layer(layer)`, `gs_gwc_set_tile_layer(layer, enabled?, gridsets[]?, formats[]?)`
+- `gs_gwc_list_gridsets()`
+- `gs_gwc_seed(layer, gridset, zoomStart, zoomStop, format, operation?, threads?, bbox[]?)`
+- `gs_gwc_list_tasks(layer?)`, `gs_gwc_kill_tasks(layer?, which?)`
 
 ## Version facts (verified 2026-09-25)
 

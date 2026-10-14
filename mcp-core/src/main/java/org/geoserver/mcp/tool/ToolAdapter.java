@@ -36,7 +36,7 @@ public final class ToolAdapter {
         return McpSchema.Tool.builder(tool.name(), schema)
                 .title(tool.title())
                 .description(tool.description())
-                .annotations(tool.annotations())
+                .annotations(tool.annotations() != null ? tool.annotations() : ToolHints.of(tool.name()))
                 .build();
     }
 
