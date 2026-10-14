@@ -65,7 +65,7 @@ GeoWebCache (via the GWC REST API)
 
 ## Plugins
 
-Store types and modules are discovered at runtime: `gs_list_store_types` and `gs_list_modules` show what this server has. [docs/plugins.md](docs/plugins.md) lists which GeoServer extensions and community modules each tool can drive, and which of them have been verified.
+Store types and modules are discovered at runtime: `gs_list_store_types` and `gs_list_modules` show what this server has. [docs/plugins.md](docs/plugins.md) states which GeoServer extensions and community modules each tool can drive, and the exceptions.
 
 ## Manual curl
 
