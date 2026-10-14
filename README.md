@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/geoserver/geoserver/main/src/web/core/src/main/java/org/geoserver/web/img/logo.png" alt="GeoServer" height="48" align="absmiddle"> GeoServer MCP
 
-An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles, query features, look at rendered maps, seed tile caches.
+Not built yet: design and plan stage. An MCP (Model Context Protocol) server that runs inside GeoServer. Once built, point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles, query features, look at rendered maps, seed tile caches.
 
 Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 

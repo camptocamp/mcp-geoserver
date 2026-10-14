@@ -20,11 +20,11 @@ Status: `verified` means exercised by the Testcontainers flow or the Cloud smoke
 | PostGIS | store | expected | `dbtype=postgis`, passwords masked in tool output |
 | Shapefile, Directory of shapefiles | store | expected | `url` param |
 | GeoPackage (vector) | store | expected | `database` param |
-| Properties | store | verified | used by the unit tests |
-| GeoTIFF | store | verified | Testcontainers flow publishes a generated GeoTIFF |
+| Properties | store | expected | used by the unit tests |
+| GeoTIFF | store | expected | Testcontainers flow publishes a generated GeoTIFF |
 | ImageMosaic | store | expected | `url` is the mosaic directory |
 | WMS, WMTS cascading stores | n/a | - | read by `gs_get_store`, not creatable in v1 |
-| GeoWebCache | gwc | verified | all `gs_gwc_*` tools over the GWC REST API |
+| GeoWebCache | gwc | expected | all `gs_gwc_*` tools over the GWC REST API |
 
 ## Extensions (3.0.1 release page)
 
@@ -52,11 +52,11 @@ Status: `verified` means exercised by the Testcontainers flow or the Cloud smoke
 
 | Plugin | via | Status | Notes |
 |---|---|---|---|
-| cog-http, cog-s3, cog-google, cog-azure | store | verified on Cloud | `COG` type, `params.url`; vanilla needs the zip in `WEB-INF/lib` |
+| cog-http, cog-s3, cog-google, cog-azure | store | expected | `COG` type, `params.url`; vanilla needs the zip in `WEB-INF/lib` |
 | s3-geotiff, vsi | store | expected | |
 | flatgeobuf, geoparquet, duckdb, geopkg, gpx, ogr-datastore, mbtiles-store, pmtiles-store, vector-mosaic, stac-datastore, elasticsearch, solr, singlestore, mongodb-schemaless | store | expected | any `DataAccessFactory` on the classpath is listed |
 | gwc-mbtiles, gwc-azure-blobstore, gwc-gcs-blobstore | gwc | n/a in v1 | blobstores not configurable, seeding works |
-| jdbcconfig, jdbcstore, pgconfig (Cloud) | module | verified on Cloud | settings live in `GeoServerInfo` metadata, so they persist in any backend |
+| jdbcconfig, jdbcstore, pgconfig (Cloud) | module | expected | settings live in `GeoServerInfo` metadata, so they persist in any backend |
 | ogcapi-* | module | - | |
 | everything else | n/a | - | |
 
