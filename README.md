@@ -6,10 +6,7 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
 ## Status
 
-Work in progress: design and plan only, no code yet.
-
-- Design: [docs/superpowers/specs/2026-09-25-geoserver-mcp-design.md](docs/superpowers/specs/2026-09-25-geoserver-mcp-design.md)
-- Implementation plan: [docs/superpowers/plans/2026-09-25-geoserver-mcp.md](docs/superpowers/plans/2026-09-25-geoserver-mcp.md)
+Work in progress: no code yet.
 
 ## Quick start (vanilla GeoServer 3.0.1 in Docker)
 
