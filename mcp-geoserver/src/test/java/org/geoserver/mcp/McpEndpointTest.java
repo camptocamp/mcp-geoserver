@@ -7,11 +7,15 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.Filter;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.geoserver.data.test.SystemTestData;
 import org.geoserver.mcp.settings.McpSettings;
 import org.geoserver.mcp.settings.McpSettingsStore;
 import org.geoserver.security.GeoServerSecurityFilterChainProxy;
+import org.geoserver.security.impl.GeoServerUser;
+import org.geoserver.security.GeoServerUserGroupService;
+import org.geoserver.security.GeoServerUserGroupStore;
 import org.geoserver.test.GeoServerSystemTestSupport;
 import org.junit.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -37,10 +41,10 @@ public class McpEndpointTest extends GeoServerSystemTestSupport {
         req.setContentType("application/json");
         req.addHeader("Accept", "application/json, text/event-stream");
         if (user != null) {
-            String token = java.util.Base64.getEncoder().encodeToString((user + ":" + password).getBytes());
+            String token = java.util.Base64.getEncoder().encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
             req.addHeader("Authorization", "Basic " + token);
         }
-        req.setContent(body.getBytes());
+        req.setContent(body.getBytes(StandardCharsets.UTF_8));
         return dispatch(req);
     }
 
@@ -68,6 +72,17 @@ public class McpEndpointTest extends GeoServerSystemTestSupport {
     }
 
     @Test
+    public void authenticatedUserWithoutAllowedRoleIsForbidden() throws Exception {
+        GeoServerUserGroupService ugService = getSecurityManager().loadUserGroupService("default");
+        GeoServerUserGroupStore store = ugService.createStore();
+        GeoServerUser user = store.createUserObject("plain", "plainpw", true);
+        store.addUser(user);
+        store.store();
+        MockHttpServletResponse r = mcp("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}", "plain", "plainpw");
+        assertEquals(403, r.getStatus());
+    }
+
+    @Test
     public void disabledIsUnavailable() throws Exception {
         new McpSettingsStore(getGeoServer()).save(McpSettings.DEFAULTS);
         try {
@@ -81,10 +96,10 @@ public class McpEndpointTest extends GeoServerSystemTestSupport {
     MockHttpServletResponse rest(String method, String body) throws Exception {
         MockHttpServletRequest req = createRequest("rest/mcp/settings");
         req.setMethod(method);
-        req.addHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString("admin:geoserver".getBytes()));
+        req.addHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString("admin:geoserver".getBytes(StandardCharsets.UTF_8)));
         if (body != null) {
             req.setContentType("application/json");
-            req.setContent(body.getBytes());
+            req.setContent(body.getBytes(StandardCharsets.UTF_8));
         }
         return dispatch(req);
     }

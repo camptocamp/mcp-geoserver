@@ -121,7 +121,7 @@
             <configuration>
               <outputDirectory>${project.build.directory}/libs</outputDirectory>
               <includeScope>runtime</includeScope>
-              <excludeArtifactIds>jackson-databind,jackson-core,jackson-annotations,slf4j-api</excludeArtifactIds>
+              <excludeArtifactIds>jackson-annotations,slf4j-api,jackson-dataformat-yaml,snakeyaml</excludeArtifactIds>
             </configuration>
           </execution>
         </executions>
@@ -157,7 +157,7 @@
               <target>
                 <delete>
                   <fileset dir="${project.basedir}/../docker/vanilla/additional_libs"
-                           includes="gs-mcp-*.jar,mcp-*.jar,reactor-core-*.jar,reactive-streams-*.jar,json-schema-validator-*.jar,itu-*.jar,jackson-dataformat-yaml-*.jar,snakeyaml-*.jar"/>
+                           includes="gs-mcp-core-*.jar,gs-mcp-geoserver-*.jar,mcp-core-*.jar,mcp-json-jackson2-*.jar,reactor-core-*.jar,reactive-streams-*.jar,json-schema-validator-*.jar,itu-*.jar,jackson-core-*.jar,jackson-databind-*.jar"/>
                 </delete>
                 <copy todir="${project.basedir}/../docker/vanilla/additional_libs">
                   <fileset dir="${project.build.directory}/geoserver-mcp-${project.version}-additional_libs"/>
