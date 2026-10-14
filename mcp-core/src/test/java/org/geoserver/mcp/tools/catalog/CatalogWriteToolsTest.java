@@ -174,4 +174,27 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
         JsonNode r = run(tool(new AdminTools(getCatalog(), getGeoServer()).tools(), "gs_reload"), Map.of());
         assertTrue(r.get("reloaded").asBoolean());
     }
+
+    @Test
+    public void publishLayerIsIdempotent() throws Exception {
+        var publish = tool(new LayerTools(getCatalog()).tools(), "gs_publish_layer");
+        Map<String, Object> args = Map.of("workspace", "cite", "store", "cite", "nativeName", "Buildings", "name", "BuildingsOnce");
+        assertTrue(run(publish, args).get("created").asBoolean());
+        int layers = getCatalog().getLayers().size();
+        JsonNode again = run(publish, args);
+        assertFalse(again.get("created").asBoolean());
+        assertEquals("cite:BuildingsOnce", again.get("name").asText());
+        assertEquals(layers, getCatalog().getLayers().size());
+    }
+
+    @Test
+    public void createLayerGroupIsIdempotent() throws Exception {
+        var create = tool(new LayerGroupTools(getCatalog()).tools(), "gs_create_layer_group");
+        Map<String, Object> args = Map.of("name", "grpOnce", "workspace", "cite", "layers", List.of("cite:Lakes"));
+        assertTrue(run(create, args).get("created").asBoolean());
+        int groups = getCatalog().getLayerGroups().size();
+        JsonNode again = run(create, args);
+        assertFalse(again.get("created").asBoolean());
+        assertEquals(groups, getCatalog().getLayerGroups().size());
+    }
 }

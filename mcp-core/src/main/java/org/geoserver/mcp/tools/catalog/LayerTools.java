@@ -109,13 +109,18 @@ public class LayerTools {
                 }
                 if (resource.getSRS() == null && resource instanceof FeatureTypeInfo ft) builder.lookupSRS(ft, true);
                 builder.setupBounds(resource);
-                if (catalog.getLayerByName(ws.getName() + ":" + resource.getName()) != null) {
-                    throw new ToolException("Layer '" + ws.getName() + ":" + resource.getName() + "' already exists");
+                LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + resource.getName());
+                if (existing != null) {
+                    Map<String, Object> m = Views.layer(existing);
+                    m.put("created", false);
+                    return m;
                 }
                 LayerInfo layer = builder.buildLayer(resource);
                 catalog.add(resource);
                 catalog.add(layer);
-                return Views.layer(catalog.getLayerByName(ws.getName() + ":" + resource.getName()));
+                Map<String, Object> m = Views.layer(catalog.getLayerByName(ws.getName() + ":" + resource.getName()));
+                m.put("created", true);
+                return m;
             }
         };
     }

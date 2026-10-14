@@ -92,8 +92,11 @@ public class LayerGroupTools {
                 String name = args.string("name");
                 String workspace = args.string("workspace", null);
                 WorkspaceInfo ws = workspace == null ? null : Lookups.workspace(catalog, workspace);
-                if ((ws == null ? catalog.getLayerGroupByName(name) : catalog.getLayerGroupByName(ws, name)) != null) {
-                    throw new ToolException("Layer group '" + Lookups.qualified(workspace, name) + "' already exists");
+                LayerGroupInfo existing = ws == null ? catalog.getLayerGroupByName(name) : catalog.getLayerGroupByName(ws, name);
+                if (existing != null) {
+                    Map<String, Object> m = Views.layerGroup(existing);
+                    m.put("created", false);
+                    return m;
                 }
                 List<String> layers = args.strings("layers");
                 if (layers.isEmpty()) throw new ToolException("At least one layer is required");
@@ -115,7 +118,9 @@ public class LayerGroupTools {
                 ctx.trace().curl("POST", ws == null ? "/rest/layergroups" : "/rest/workspaces/" + ws.getName() + "/layergroups",
                         "application/json", Views.json(Map.of("layerGroup", Map.of("name", name, "layers", Map.of("layer", layers)))));
                 catalog.add(g);
-                return Views.layerGroup(ws == null ? catalog.getLayerGroupByName(name) : catalog.getLayerGroupByName(ws, name));
+                Map<String, Object> m = Views.layerGroup(ws == null ? catalog.getLayerGroupByName(name) : catalog.getLayerGroupByName(ws, name));
+                m.put("created", true);
+                return m;
             }
         };
     }
