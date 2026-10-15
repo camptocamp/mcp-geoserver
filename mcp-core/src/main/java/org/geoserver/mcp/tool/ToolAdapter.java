@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.geoserver.mcp.settings.McpSettings;
 import org.geoserver.mcp.settings.McpSettingsStore;
 
 public final class ToolAdapter {
@@ -44,12 +45,15 @@ public final class ToolAdapter {
     static McpSchema.CallToolResult invoke(GsTool tool, McpSettingsStore settings, ObjectMapper json,
             McpTransportContext tctx, McpSchema.CallToolRequest req) {
         Args args = new Args(req.arguments());
-        boolean verbose = args.has(Keys.VERBOSE) ? args.bool(Keys.VERBOSE, false) : settings.load().verbose();
+        McpSettings current = settings.load();
+        String name = tool.definition().name();
+        if (current.readOnly() && !isReadOnly(tool)) return error(name + " is disabled: the MCP server is in read-only mode");
+        boolean verbose = args.has(Keys.VERBOSE) ? args.bool(Keys.VERBOSE, false) : current.verbose();
         String auth = (String) tctx.get(ToolContext.AUTHORIZATION_KEY);
         String base = (String) tctx.get(ToolContext.REQUEST_BASE_URL_KEY);
-        ToolContext ctx = new ToolContext(verbose, new CommandTrace(), auth, base == null ? "" : base);
+        ToolContext ctx = new ToolContext(verbose, new CommandTrace(), auth, base == null ? "" : base, current);
         try {
-            Object payload = tool.call(ctx, args);
+            Object payload = capLists(tool.call(ctx, args), current.maxListResults());
             List<McpSchema.Content> content = new ArrayList<>();
             content.add(toContent(payload, json));
             if (verbose && !ctx.trace().lines().isEmpty()) {
@@ -65,6 +69,28 @@ public final class ToolAdapter {
             String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             return error(tool.definition().name() + " failed: " + msg);
         }
+    }
+
+    static boolean isReadOnly(GsTool tool) {
+        McpSchema.ToolAnnotations hints = tool.definition().annotations() != null ? tool.definition().annotations() : ToolHints.of(tool.definition().name());
+        return hints != null && Boolean.TRUE.equals(hints.readOnlyHint());
+    }
+
+    static Object capLists(Object payload, int max) {
+        if (!(payload instanceof Map<?, ?> map)) return payload;
+        Map<String, Object> out = new LinkedHashMap<>();
+        Map<String, Integer> truncated = new LinkedHashMap<>();
+        map.forEach((k, v) -> {
+            if (v instanceof List<?> list && list.size() > max) {
+                out.put(String.valueOf(k), list.subList(0, max));
+                truncated.put(String.valueOf(k), list.size());
+            } else {
+                out.put(String.valueOf(k), v);
+            }
+        });
+        if (truncated.isEmpty()) return payload;
+        out.put("truncated", truncated);
+        return out;
     }
 
     static McpSchema.Content toContent(Object payload, ObjectMapper json) throws JsonProcessingException {

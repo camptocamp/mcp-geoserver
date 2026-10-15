@@ -79,4 +79,17 @@ class McpSettingsControllerTest {
         verify(settings).save(saved.capture());
         assertEquals(List.of("ROLE_A", "ROLE_B"), saved.getValue().allowedRoles());
     }
+
+    @Test
+    void putSetsReadOnlyAndLimits() throws Exception {
+        when(gate.isAdmin()).thenReturn(true);
+        MockHttpServletRequest req = new MockHttpServletRequest("PUT", "/geoserver/rest/mcp/settings");
+        req.setContent("{\"readOnly\":true,\"maxListResults\":25,\"maxFeatures\":50}".getBytes());
+        controller.put(req, new MockHttpServletResponse());
+        ArgumentCaptor<McpSettings> saved = ArgumentCaptor.forClass(McpSettings.class);
+        verify(settings).save(saved.capture());
+        assertTrue(saved.getValue().readOnly());
+        assertEquals(25, saved.getValue().maxListResults());
+        assertEquals(50, saved.getValue().maxFeatures());
+    }
 }
