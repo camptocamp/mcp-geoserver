@@ -134,4 +134,40 @@ class ToolAdapterTest {
         McpSchema.Tool t = ToolAdapter.withVerbose(McpSchema.Tool.builder("gs_custom", Schema.object().build()).annotations(a).build());
         assertEquals(a, t.annotations());
     }
+
+    @Test
+    void readOnlyModeRefusesWriteToolsOnly() {
+        McpSettingsStore s = mock(McpSettingsStore.class);
+        when(s.load()).thenReturn(new McpSettings(true, List.of("ROLE_ADMINISTRATOR"), false, "").withLimits(true, 500, 10000));
+        GsTool write = new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_delete", Schema.object().build()).description("Delete").build();
+            }
+            public Object call(ToolContext ctx, Args args) {
+                return Map.of("deleted", true);
+            }
+        };
+        GsTool read = new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_status", Schema.object().build()).description("Status").build();
+            }
+            public Object call(ToolContext ctx, Args args) {
+                return Map.of("ok", true);
+            }
+        };
+        McpTransportContext none = McpTransportContext.create(Map.of());
+        McpSchema.CallToolResult refused = ToolAdapter.invoke(write, s, json, none, McpSchema.CallToolRequest.builder("gs_delete").arguments(Map.of()).build());
+        assertTrue(refused.isError());
+        assertTrue(((McpSchema.TextContent) refused.content().get(0)).text().contains("read-only"));
+        assertFalse(ToolAdapter.invoke(read, s, json, none, McpSchema.CallToolRequest.builder("gs_status").arguments(Map.of()).build()).isError());
+    }
+
+    @Test
+    void longListsAreCappedAndReported() {
+        Object capped = ToolAdapter.capLists(Map.of("layers", List.of(1, 2, 3), "name", "x"), 2);
+        assertEquals(Map.of("layers", List.of(1, 2), "name", "x", "truncated", Map.of("layers", 3)), capped);
+        Map<String, Object> small = Map.of("layers", List.of(1));
+        assertEquals(small, ToolAdapter.capLists(small, 2));
+        assertEquals("text", ToolAdapter.capLists("text", 2));
+    }
 }

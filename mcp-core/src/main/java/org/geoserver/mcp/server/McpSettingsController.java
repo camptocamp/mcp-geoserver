@@ -49,14 +49,19 @@ public class McpSettingsController {
         boolean enabled = body.path(Keys.ENABLED).asBoolean(current.enabled());
         boolean verbose = body.path(Keys.VERBOSE).asBoolean(current.verbose());
         String base = body.path("internalBaseUrl").asText(current.internalBaseUrl());
-        List<String> roles = current.allowedRoles();
-        if (body.path("allowedRoles").isArray()) {
-            roles = new ArrayList<>();
-            for (JsonNode n : body.path("allowedRoles")) roles.add(n.asText());
-        }
-        McpSettings updated = new McpSettings(enabled, roles, verbose, base);
+        McpSettings updated = new McpSettings(enabled, roles(body, current), verbose, base,
+                body.path("readOnly").asBoolean(current.readOnly()),
+                body.path("maxListResults").asInt(current.maxListResults()),
+                body.path("maxFeatures").asInt(current.maxFeatures()));
         settings.save(updated);
         write(resp, updated);
+    }
+
+    private static List<String> roles(JsonNode body, McpSettings current) {
+        if (!body.path("allowedRoles").isArray()) return current.allowedRoles();
+        List<String> roles = new ArrayList<>();
+        for (JsonNode n : body.path("allowedRoles")) roles.add(n.asText());
+        return roles;
     }
 
     private void write(HttpServletResponse resp, McpSettings s) throws IOException {

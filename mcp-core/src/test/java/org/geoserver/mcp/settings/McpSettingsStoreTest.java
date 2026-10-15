@@ -57,4 +57,17 @@ class McpSettingsStoreTest {
         store.save(new McpSettings(true, List.of(), false, ""));
         assertEquals(List.of("ROLE_ADMINISTRATOR"), store.load().allowedRoles());
     }
+
+    @Test
+    void limitsAndReadOnlyRoundTripAndFallBack() {
+        store.save(McpSettings.DEFAULTS.withLimits(true, 20, 300));
+        McpSettings s = store.load();
+        assertTrue(s.readOnly());
+        assertEquals(20, s.maxListResults());
+        assertEquals(300, s.maxFeatures());
+        metadata.put("mcp.maxListResults", "lots");
+        metadata.put("mcp.maxFeatures", "0");
+        assertEquals(McpSettings.DEFAULT_MAX_LIST_RESULTS, store.load().maxListResults());
+        assertEquals(McpSettings.DEFAULT_MAX_FEATURES, store.load().maxFeatures());
+    }
 }

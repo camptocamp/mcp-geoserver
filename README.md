@@ -26,8 +26,8 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
 | Target | State |
 | --- | --- |
-| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 34 tools, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
-| GeoServer Cloud 3.0.1 | Works. Verified with the upstream `v3.0.1` compose (datadir catalog) and the derived `geoserver-cloud-rest:3.0.1.1` image from `docker/cloud`: settings via `/rest/mcp/settings` persist across a restconfig restart, `/mcp` through the gateway lists 34 tools, anonymous gets 403, disabled gives 503, `docker/cloud/smoke.sh` passes. Exercised `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store` (local GeoTIFF and a public `https://` COG), `gs_publish_layer`, `gs_get_map` and `gs_check_layer` through `internalBaseUrl` on the wms service, `gs_query_features`, `gs_gwc_list_gridsets` on the gwc service, `gs_delete`. |
+| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 34 tools (35 since `gs_set_time_dimension`), anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
+| GeoServer Cloud 3.0.1 | Works. Verified with the upstream `v3.0.1` compose (datadir catalog) and the derived `geoserver-cloud-rest:3.0.1.1` image from `docker/cloud`: settings via `/rest/mcp/settings` persist across a restconfig restart, `/mcp` through the gateway lists 34 tools (verified before `gs_set_time_dimension` was added), anonymous gets 403, disabled gives 503, `docker/cloud/smoke.sh` passes. Exercised `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store` (local GeoTIFF and a public `https://` COG), `gs_publish_layer`, `gs_get_map` and `gs_check_layer` through `internalBaseUrl` on the wms service, `gs_query_features`, `gs_gwc_list_gridsets` on the gwc service, `gs_delete`. |
 
 ## Install
 
@@ -71,10 +71,18 @@ The zip targets vanilla GeoServer. For GeoServer Cloud, see `docker/cloud/README
 Three ways, all persisted in the GeoServer global settings:
 
 1. Admin UI: Services, MCP Server (vanilla only).
-2. REST: `GET` and `PUT /rest/mcp/settings` with `{"enabled":true,"allowedRoles":["ROLE_ADMINISTRATOR"],"verbose":false,"internalBaseUrl":""}`.
+2. REST: `GET` and `PUT /rest/mcp/settings` with `{"enabled":true,"allowedRoles":["ROLE_ADMINISTRATOR"],"verbose":false,"internalBaseUrl":"","readOnly":false,"maxListResults":500,"maxFeatures":10000}`. Any subset of keys may be sent.
 3. Any tool call with `"verbose": true` for that call only.
 
 A disabled server answers HTTP 503 on `/mcp`. Callers without an allowed role get 403.
+
+## Read-only mode and limits
+
+- `readOnly`: only tools annotated read-only run; every other call answers an error naming the mode. Role setup is untouched.
+- `maxListResults` (default 500): any list in a tool result is cut to this length and the result gets `"truncated": {"<key>": <total>}`.
+- `maxFeatures` (default 10000): upper bound for `gs_query_features`, whatever the caller asks.
+
+All three are on the admin page and in the REST settings.
 
 ## Verbose mode
 
@@ -97,7 +105,7 @@ Discovery
 - `gs_list_modules`: installed GeoServer modules
 
 Write
-- `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_publish_layers` (bulk, up to 50), `gs_create_sql_view`, `gs_update_layer`
+- `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_publish_layers` (bulk, up to 50), `gs_create_sql_view`, `gs_update_layer`, `gs_set_time_dimension` (vector attribute or ImageMosaic time, presentation, default value)
 - `gs_put_style`, `gs_create_layer_group`
 - `gs_delete`, `gs_reload`
 
@@ -109,6 +117,15 @@ GeoWebCache (via the GWC REST API)
 - `gs_gwc_list_tile_layers`, `gs_gwc_get_tile_layer`, `gs_gwc_set_tile_layer`
 - `gs_gwc_list_gridsets`
 - `gs_gwc_seed`, `gs_gwc_list_tasks`, `gs_gwc_kill_tasks`
+
+## Resources
+
+Read-only MCP resources mirror the read tools, for clients that browse resources instead of calling tools:
+
+- `geoserver://status`, `geoserver://workspaces`, `geoserver://layers`, `geoserver://styles`, `geoserver://layergroups`
+- `geoserver://workspaces/{name}`, `geoserver://layers/{name}` (`workspace:name`, URL-encoded), `geoserver://styles/{name}`
+
+They run the matching tool with the caller's credentials, so permissions and limits are the same.
 
 ## Example session
 

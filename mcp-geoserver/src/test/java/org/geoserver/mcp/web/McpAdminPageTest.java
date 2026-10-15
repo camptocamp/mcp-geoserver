@@ -48,4 +48,20 @@ public class McpAdminPageTest extends GeoServerWicketTestSupport {
         tester.assertNoErrorMessage();
         assertEquals(List.of("ROLE_AUTHENTICATED"), new McpSettingsStore(getGeoServer()).load().allowedRoles());
     }
+
+    @Test
+    public void readOnlyAndLimitsThroughForm() {
+        login();
+        tester.startPage(McpAdminPage.class);
+        FormTester form = tester.newFormTester("form");
+        form.setValue("readOnly", true);
+        form.setValue("maxListResults", "40");
+        form.setValue("maxFeatures", "250");
+        form.submit("submit");
+        tester.assertNoErrorMessage();
+        var s = new McpSettingsStore(getGeoServer()).load();
+        assertTrue(s.readOnly());
+        assertEquals(40, s.maxListResults());
+        assertEquals(250, s.maxFeatures());
+    }
 }
