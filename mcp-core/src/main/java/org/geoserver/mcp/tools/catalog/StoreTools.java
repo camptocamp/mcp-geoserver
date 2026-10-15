@@ -133,6 +133,7 @@ public class StoreTools {
                         var ns = catalog.getNamespaceByPrefix(ws.getName());
                         if (ns != null) conn.put("namespace", ns.getURI());
                     }
+                    JdbcConnectionCheck.verify(factory, name, conn);
                     ds.getConnectionParameters().putAll(conn);
                     Set<String> secrets = Views.secretParams(ds);
                     List<Map<String, Object>> entries = new ArrayList<>();

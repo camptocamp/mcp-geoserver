@@ -158,15 +158,15 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
     }
 
     @Test
-    public void createPostgisStoreWarnsWhenCheckCannotRun() throws Exception {
-        JsonNode r = run(tool(new StoreTools(getCatalog()).tools(), "gs_create_store"), Map.of(
+    public void createPostgisStoreRejectsWhenDatabaseUnreachable() {
+        var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
+        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of(
                 "workspace", "cite", "name", "pgdown", "type", "PostGIS",
                 "params", Map.of("dbtype", "postgis", "host", "127.0.0.1", "port", 1, "database", "db",
-                        "user", "bob", "passwd", "secret", "schema", "public")));
-        assertTrue(r.get("created").asBoolean());
-        assertNotNull(getCatalog().getDataStoreByName("cite", "pgdown"));
-        assertTrue(r.get("warnings").toString(), r.get("warnings").get(0).asText().startsWith("Privilege check skipped"));
-        assertEquals("********", r.get("connectionParameters").get("passwd").asText());
+                        "user", "bob", "passwd", "secret", "schema", "public"))));
+        assertTrue(e.getMessage(), e.getMessage().startsWith("Cannot connect store 'pgdown'"));
+        assertFalse(e.getMessage(), e.getMessage().contains("secret"));
+        assertNull(getCatalog().getDataStoreByName("cite", "pgdown"));
     }
 
     @Test

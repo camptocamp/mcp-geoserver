@@ -54,7 +54,7 @@ Discovery
 
 Write
 - `gs_create_workspace(name, namespaceUri?, isolated?)`
-- `gs_create_store(workspace, name, type, params)`: PostGIS stores also return privilege `warnings`
+- `gs_create_store(workspace, name, type, params)`: JDBC stores must answer `select 1` or nothing is saved; PostGIS stores also return privilege `warnings`
 - `gs_publish_layer(workspace, store, nativeName?, name?, title?, srs?)`
 - `gs_update_layer(name, title?, abstract?, defaultStyle?, styles[]?, enabled?, advertised?)`
 - `gs_put_style(name, workspace?, body, format?)`: format `sld` by default, `css`, `ysld`, `mbstyle` with their extension
