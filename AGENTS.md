@@ -32,6 +32,8 @@ Tests extending `GeoServerSystemTestSupport` are JUnit 4 (`org.junit.Test`). Eve
 - A tool is a `GsTool`: `definition()` returns the `McpSchema.Tool`, `call(ToolContext, Args)` returns a payload (`Map`, record, `RawJson`, or `ImagePayload`). Throw `ToolException` with a one-line message for user errors.
 - Every tool that maps to a REST call records it with `ctx.trace().curl(...)` so verbose mode works.
 - Settings live in `GeoServerInfo` metadata, keys `mcp.*`. Never add a `ServiceInfo` subtype (breaks GeoServer Cloud pgconfig).
+- Settings reach tools through `ToolContext.settings()`. `ToolAdapter` enforces `readOnly` from the tool's read-only hint and caps lists to `maxListResults`, so a new read tool must be in `ToolHints.READ`.
+- MCP resources (`ToolResources`) are thin URIs over read tools; add one there rather than duplicating tool logic.
 - JSON via Jackson 2 `ObjectMapper` passed explicitly. Never `McpJsonDefaults`.
 - No code comments except for hidden constraints. No em dashes anywhere.
 - Commit after every task. Messages: `feat|fix|test|docs|chore: <what>`.
@@ -72,6 +74,7 @@ Write
 - `gs_publish_layers(workspace, store, names[] | all, includeNonSpatial?)`: up to 50 per call, per-item result with warnings or error, geometryless skipped
 - `gs_create_sql_view(workspace, store, name, sql, geometry, geometryType, srid, keyColumn?)`: SQL view on a JDBC store, published as a layer
 - `gs_update_layer(name, title?, abstract?, defaultStyle?, styles[]?, enabled?, advertised?)`
+- `gs_set_time_dimension(name, enabled?, attribute?, endAttribute?, presentation?, resolution?, defaultValue?, referenceValue?, nearestMatch?)`: vector layers need `attribute`; DISCRETE_INTERVAL needs `resolution` in ms
 - `gs_put_style(name, workspace?, body, format?)`: format `sld` by default, `css`, `ysld`, `mbstyle` with their extension
 - `gs_create_layer_group(name, workspace?, title?, layers[], styles[]?, mode?)`
 - `gs_delete(kind, workspace?, name, recurse?)`
