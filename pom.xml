@@ -23,17 +23,17 @@
     <gt.version>35.1</gt.version>
     <gwc.version>2.0.1</gwc.version>
     <spring.version>7.0.9</spring.version>
-    <spring.security.version>7.1.0</spring.security.version>
+    <spring.security.version>7.1.1</spring.security.version>
     <mcp.sdk.version>2.0.1</mcp.sdk.version>
-    <spring-boot.version>4.0.7</spring-boot.version>
-    <wicket.version>10.10.0</wicket.version>
+    <spring-boot.version>4.1.1</spring-boot.version>
+    <wicket.version>10.11.0</wicket.version>
     <jakarta.servlet.version>6.1.0</jakarta.servlet.version>
     <junit.version>5.11.4</junit.version>
-    <mockito.version>5.20.0</mockito.version>
+    <mockito.version>5.24.0</mockito.version>
     <testcontainers.version>2.0.5</testcontainers.version>
     <xmlunit.version>1.6</xmlunit.version>
-    <jsoup.version>1.23.1</jsoup.version>
-    <httpclient5.version>5.4.4</httpclient5.version>
+    <jsoup.version>1.23.2</jsoup.version>
+    <httpclient5.version>5.6.5</httpclient5.version>
     <jacoco.version>0.8.15</jacoco.version>
     <sonar.projectKey>camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b</sonar.projectKey>
     <sonar.projectName>mcp-geoserver</sonar.projectName>
@@ -182,12 +182,12 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.13.0</version>
+          <version>3.16.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.5.2</version>
+          <version>3.6.0</version>
           <configuration>
             <argLine>@{argLine} -Xmx1g -Djava.awt.headless=true</argLine>
           </configuration>
@@ -195,17 +195,17 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>3.5.2</version>
+          <version>3.6.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.7.1</version>
+          <version>3.8.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-dependency-plugin</artifactId>
-          <version>3.8.1</version>
+          <version>3.11.0</version>
         </plugin>
       </plugins>
     </pluginManagement>
