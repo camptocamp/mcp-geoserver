@@ -34,6 +34,9 @@ import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geoserver.mcp.tool.Keys;
 
 public class DataTools {
+    private static final String HEIGHT = "height";
+    private static final String IMAGE_PREFIX = "image/";
+    private static final String WIDTH = "width";
     private static final String BAD_BBOX = "bbox needs exactly 4 numbers";
     private static final String BBOX_PARAM = "&BBOX=";
 
@@ -122,8 +125,8 @@ public class DataTools {
                 return McpSchema.Tool.builder("gs_get_map", Schema.object()
                         .stringArray(Keys.LAYERS, "Layer or layer group names", true)
                         .numberArray("bbox", "minx, miny, maxx, maxy", true)
-                        .integer(Keys.WIDTH, "Image width in pixels", true)
-                        .integer(Keys.HEIGHT, "Image height in pixels", true)
+                        .integer(WIDTH, "Image width in pixels", true)
+                        .integer(HEIGHT, "Image height in pixels", true)
                         .string("srs", "CRS of the bbox, default EPSG:4326", false)
                         .stringArray(Keys.STYLES, "Style per layer; empty string for default", false)
                         .string(Keys.FORMAT, "Image MIME type, default image/png", false)
@@ -141,10 +144,10 @@ public class DataTools {
                         + "&LAYERS=" + enc(layers) + "&STYLES=" + enc(styles)
                         + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
                         + "&SRS=" + enc(args.string("srs", "EPSG:4326"))
-                        + "&WIDTH=" + args.integer(Keys.WIDTH, 512) + "&HEIGHT=" + args.integer(Keys.HEIGHT, 512)
+                        + "&WIDTH=" + args.integer(WIDTH, 512) + "&HEIGHT=" + args.integer(HEIGHT, 512)
                         + "&FORMAT=" + enc(format) + "&TRANSPARENT=" + args.bool("transparent", false);
                 GeoServerHttpClient.Response r = http.get(ctx, path);
-                if (r.status() != 200 || !r.contentType().startsWith(Keys.IMAGE_PREFIX)) {
+                if (r.status() != 200 || !r.contentType().startsWith(IMAGE_PREFIX)) {
                     String text = r.text().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
                     throw new ToolException("GetMap failed (HTTP " + r.status() + ", " + r.contentType() + "): " + text);
                 }
@@ -159,8 +162,8 @@ public class DataTools {
                 return McpSchema.Tool.builder("gs_check_layer", Schema.object()
                         .string("name", "Layer name, workspace:name", true)
                         .numberArray("bbox", "minx, miny, maxx, maxy in EPSG:4326; default the layer's lat/lon bounds", false)
-                        .integer(Keys.WIDTH, "Image width in pixels, default 256", false)
-                        .integer(Keys.HEIGHT, "Image height in pixels, default 256", false).build())
+                        .integer(WIDTH, "Image width in pixels, default 256", false)
+                        .integer(HEIGHT, "Image height in pixels, default 256", false).build())
                         .description("Render one layer with WMS GetMap and report text only: status, content type, ServiceException text, "
                                 + "ratio of painted pixels, elapsed ms. Use this instead of gs_get_map to check that a layer and its style render.").build();
             }
@@ -174,8 +177,8 @@ public class DataTools {
                 } else if (bbox.size() != 4) {
                     throw new ToolException(BAD_BBOX);
                 }
-                int width = args.integer(Keys.WIDTH, 256);
-                int height = args.integer(Keys.HEIGHT, 256);
+                int width = args.integer(WIDTH, 256);
+                int height = args.integer(HEIGHT, 256);
                 String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + enc(layer.prefixedName()) + "&STYLES="
                         + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
                         + "&SRS=EPSG:4326&WIDTH=" + width + "&HEIGHT=" + height
@@ -184,20 +187,20 @@ public class DataTools {
                 GeoServerHttpClient.Response r = http.get(ctx, path);
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000;
                 String contentType = r.contentType().split(";")[0].trim();
-                BufferedImage img = r.status() == 200 && contentType.startsWith(Keys.IMAGE_PREFIX) ? ImageIO.read(new ByteArrayInputStream(r.body())) : null;
+                BufferedImage img = r.status() == 200 && contentType.startsWith(IMAGE_PREFIX) ? ImageIO.read(new ByteArrayInputStream(r.body())) : null;
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("ok", img != null);
                 m.put(Keys.LAYER, layer.prefixedName());
                 m.put("bbox", bbox);
-                m.put(Keys.WIDTH, width);
-                m.put(Keys.HEIGHT, height);
+                m.put(WIDTH, width);
+                m.put(HEIGHT, height);
                 m.put("status", r.status());
                 m.put("contentType", contentType);
                 m.put("elapsedMs", elapsedMs);
                 if (img != null) {
                     m.put("paintedRatio", paintedRatio(img));
                 } else {
-                    String text = contentType.startsWith(Keys.IMAGE_PREFIX) ? "Undecodable image" : r.text().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+                    String text = contentType.startsWith(IMAGE_PREFIX) ? "Undecodable image" : r.text().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
                     m.put("serviceException", text);
                 }
                 return m;

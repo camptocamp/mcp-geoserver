@@ -30,6 +30,8 @@ import org.geoserver.mcp.tool.ToolContext;
 import org.geoserver.mcp.tool.Keys;
 
 public class StoreTools {
+    private static final String NAMESPACE = "namespace";
+
     protected final Catalog catalog;
 
     public StoreTools(Catalog catalog) {
@@ -215,11 +217,11 @@ public class StoreTools {
         Set<String> missing = new java.util.TreeSet<>();
         for (var p : factory.getParametersInfo()) {
             known.add(p.key);
-            if (p.required && !params.containsKey(p.key) && !Keys.NAMESPACE.equals(p.key)) missing.add(p.key);
+            if (p.required && !params.containsKey(p.key) && !NAMESPACE.equals(p.key)) missing.add(p.key);
         }
         Set<String> unknown = new java.util.TreeSet<>(params.keySet());
         unknown.removeAll(known);
-        unknown.remove(Keys.NAMESPACE);
+        unknown.remove(NAMESPACE);
         if (unknown.isEmpty() && missing.isEmpty()) return;
         throw new ToolException("Invalid params for " + type + ":"
                 + (unknown.isEmpty() ? "" : " unknown keys " + unknown + ";")
@@ -230,9 +232,9 @@ public class StoreTools {
     Map<String, Serializable> connectionParams(WorkspaceInfo ws, Map<String, Object> params) {
         Map<String, Serializable> conn = new LinkedHashMap<>();
         params.forEach((k, v) -> conn.put(k, v == null ? null : String.valueOf(v)));
-        if (!conn.containsKey(Keys.NAMESPACE)) {
+        if (!conn.containsKey(NAMESPACE)) {
             var ns = catalog.getNamespaceByPrefix(ws.getName());
-            if (ns != null) conn.put(Keys.NAMESPACE, ns.getURI());
+            if (ns != null) conn.put(NAMESPACE, ns.getURI());
         }
         return conn;
     }

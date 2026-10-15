@@ -16,31 +16,39 @@ public final class Schema {
     }
 
     public Schema string(String name, String description, boolean req) {
-        return add(name, Map.of("type", Keys.STRING, Keys.DESCRIPTION, description), req);
+        return add(name, prop("string", description), req);
     }
 
     public Schema integer(String name, String description, boolean req) {
-        return add(name, Map.of("type", "integer", Keys.DESCRIPTION, description), req);
+        return add(name, prop("integer", description), req);
     }
 
     public Schema bool(String name, String description, boolean req) {
-        return add(name, Map.of("type", "boolean", Keys.DESCRIPTION, description), req);
+        return add(name, prop("boolean", description), req);
     }
 
     public Schema stringArray(String name, String description, boolean req) {
-        return add(name, Map.of("type", "array", Keys.DESCRIPTION, description, "items", Map.of("type", Keys.STRING)), req);
+        return add(name, prop("array", description, "items", Map.of("type", "string")), req);
     }
 
     public Schema numberArray(String name, String description, boolean req) {
-        return add(name, Map.of("type", "array", Keys.DESCRIPTION, description, "items", Map.of("type", "number")), req);
+        return add(name, prop("array", description, "items", Map.of("type", "number")), req);
     }
 
     public Schema map(String name, String description, boolean req) {
-        return add(name, Map.of("type", "object", Keys.DESCRIPTION, description, "additionalProperties", true), req);
+        return add(name, prop("object", description, "additionalProperties", true), req);
     }
 
     public Schema enumeration(String name, String description, boolean req, String... values) {
-        return add(name, Map.of("type", Keys.STRING, Keys.DESCRIPTION, description, "enum", List.of(values)), req);
+        return add(name, prop("string", description, "enum", List.of(values)), req);
+    }
+
+    private static Map<String, Object> prop(String type, String description) {
+        return Map.of("type", type, Keys.DESCRIPTION, description);
+    }
+
+    private static Map<String, Object> prop(String type, String description, String key, Object value) {
+        return Map.of("type", type, Keys.DESCRIPTION, description, key, value);
     }
 
     private Schema add(String name, Map<String, Object> def, boolean req) {

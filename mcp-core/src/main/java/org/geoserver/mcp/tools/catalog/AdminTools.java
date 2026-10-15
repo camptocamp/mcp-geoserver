@@ -26,6 +26,8 @@ import org.geoserver.platform.ModuleStatus;
 import org.geoserver.mcp.tool.Keys;
 
 public class AdminTools {
+    private static final String RECURSE = "recurse";
+
     protected final Catalog catalog;
     protected final GeoServer geoServer;
 
@@ -70,14 +72,14 @@ public class AdminTools {
                         .enumeration("kind", "What to delete", true, Keys.WORKSPACE, Keys.STORE, Keys.LAYER, Keys.STYLE, "layergroup")
                         .string(Keys.WORKSPACE, "Workspace of the object (required for store; optional for style and layergroup; ignored for layer, use workspace:name)", false)
                         .string("name", "Object name", true)
-                        .bool(Keys.RECURSE, "Also delete everything that depends on it", false).build())
+                        .bool(RECURSE, "Also delete everything that depends on it", false).build())
                         .description("Delete a catalog object. Without recurse, refuses if other objects still reference it.").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String kind = args.string("kind");
                 String ws = args.string(Keys.WORKSPACE, null);
                 String name = args.string("name");
-                boolean recurse = args.bool(Keys.RECURSE, false);
+                boolean recurse = args.bool(RECURSE, false);
                 CatalogInfo target = switch (kind) {
                     case Keys.WORKSPACE -> Lookups.workspace(catalog, name);
                     case Keys.STORE -> Lookups.store(catalog, args.string(Keys.WORKSPACE), name);
@@ -94,7 +96,7 @@ public class AdminTools {
                 } catch (RuntimeException e) {
                     throw new ToolException("Cannot delete " + kind + " '" + name + "': " + e.getMessage() + ". Pass recurse=true to cascade.");
                 }
-                return Map.of("deleted", true, "kind", kind, "name", name, Keys.RECURSE, recurse);
+                return Map.of("deleted", true, "kind", kind, "name", name, RECURSE, recurse);
             }
         };
     }

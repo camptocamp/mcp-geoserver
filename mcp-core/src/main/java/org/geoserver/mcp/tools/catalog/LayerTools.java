@@ -32,6 +32,11 @@ import org.geoserver.mcp.tool.ToolContext;
 import org.geoserver.mcp.tool.Keys;
 
 public class LayerTools {
+    private static final String GEOMETRY = "geometry";
+    private static final String GEOMETRY_TYPE = "geometryType";
+    private static final String KEY_COLUMN = "keyColumn";
+    private static final String SKIPPED = "skipped";
+
     protected final Catalog catalog;
 
     public LayerTools(Catalog catalog) {
@@ -144,7 +149,7 @@ public class LayerTools {
                 Map<String, Object> m = new java.util.LinkedHashMap<>();
                 m.put(Keys.STORE, ws.getName() + ":" + ds.getName());
                 m.put("published", items.stream().filter(i -> Boolean.TRUE.equals(i.get(Keys.CREATED))).count());
-                m.put(Keys.SKIPPED, items.stream().filter(i -> i.containsKey(Keys.SKIPPED)).count());
+                m.put(SKIPPED, items.stream().filter(i -> i.containsKey(SKIPPED)).count());
                 m.put("failed", items.stream().filter(i -> i.containsKey("error")).count());
                 m.put("items", items);
                 return m;
@@ -166,7 +171,7 @@ public class LayerTools {
         try {
             item = publishVector(ctx, ds, new VectorRequest(name, null, null, null, nonSpatial, null));
         } catch (Skipped e) {
-            item = new java.util.LinkedHashMap<>(Map.of("name", name, Keys.SKIPPED, true, "warnings", List.of(e.getMessage())));
+            item = new java.util.LinkedHashMap<>(Map.of("name", name, SKIPPED, true, "warnings", List.of(e.getMessage())));
         } catch (Exception e) {
             item = new java.util.LinkedHashMap<>(Map.of("name", name, "error", JdbcConnectionCheck.rootMessage(e)));
         }
@@ -182,27 +187,27 @@ public class LayerTools {
                         .string(Keys.STORE, "JDBC store name (PostGIS and the like)", true)
                         .string("name", "View and layer name", true)
                         .string("sql", "SELECT statement; pick one geometry column here to fix multi-geometry tables", true)
-                        .string(Keys.GEOMETRY, "Geometry column name in the SELECT", true)
-                        .string(Keys.GEOMETRY_TYPE, "Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon or Geometry", true)
+                        .string(GEOMETRY, "Geometry column name in the SELECT", true)
+                        .string(GEOMETRY_TYPE, "Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon or Geometry", true)
                         .integer("srid", "EPSG code of the geometry column", true)
-                        .string(Keys.KEY_COLUMN, "Column used as feature id; omit for generated ids", false).build())
+                        .string(KEY_COLUMN, "Column used as feature id; omit for generated ids", false).build())
                         .description("Create a SQL view on a JDBC store and publish it as a layer").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string(Keys.STORE));
                 String name = args.string("name");
-                Geometries type = Geometries.getForName(args.string(Keys.GEOMETRY_TYPE));
-                if (type == null) throw new ToolException("Unknown geometryType '" + args.string(Keys.GEOMETRY_TYPE) + "'");
+                Geometries type = Geometries.getForName(args.string(GEOMETRY_TYPE));
+                if (type == null) throw new ToolException("Unknown geometryType '" + args.string(GEOMETRY_TYPE) + "'");
                 if (!(store instanceof DataStoreInfo ds) || !(catalog.getResourcePool().getDataStore(ds) instanceof JDBCDataStore jdbc)) {
                     throw new ToolException("Store '" + store.getName() + "' is not a JDBC store");
                 }
                 VirtualTable view = new VirtualTable(name, args.string("sql"));
-                view.addGeometryMetadatata(args.string(Keys.GEOMETRY), type.getBinding(), args.integer("srid", 0));
-                if (args.has(Keys.KEY_COLUMN)) view.setPrimaryKeyColumns(List.of(args.string(Keys.KEY_COLUMN)));
+                view.addGeometryMetadatata(args.string(GEOMETRY), type.getBinding(), args.integer("srid", 0));
+                if (args.has(KEY_COLUMN)) view.setPrimaryKeyColumns(List.of(args.string(KEY_COLUMN)));
                 ctx.trace().curl("POST", Keys.REST_WORKSPACES + ws.getName() + "/datastores/" + ds.getName() + "/featuretypes", Keys.APPLICATION_JSON,
                         Views.json(Map.of("featureType", Map.of("name", name, Keys.NATIVE_NAME, name, "metadata", Map.of("entry", Map.of("@key", "JDBC_VIRTUAL_TABLE",
-                                "virtualTable", Map.of("name", name, "sql", args.string("sql"), Keys.GEOMETRY, Map.of("name", args.string(Keys.GEOMETRY), "type", type.getName(), "srid", args.integer("srid", 0)))))))));
+                                "virtualTable", Map.of("name", name, "sql", args.string("sql"), GEOMETRY, Map.of("name", args.string(GEOMETRY), "type", type.getName(), "srid", args.integer("srid", 0)))))))));
                 jdbc.createVirtualTable(view);
                 try {
                     return publishVector(ctx, ds, new VectorRequest(name, null, null, null, true, view));
