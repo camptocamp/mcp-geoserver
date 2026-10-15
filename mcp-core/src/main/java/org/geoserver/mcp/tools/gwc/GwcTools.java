@@ -5,17 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.io.ByteArrayInputStream;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 import org.geoserver.mcp.http.GeoServerHttpClient;
 import org.geoserver.mcp.tool.Args;
 import org.geoserver.mcp.tool.GsTool;
@@ -26,6 +20,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.geoserver.mcp.tool.Keys;
+import org.geoserver.mcp.tool.SafeXml;
 
 public class GwcTools {
     private final GeoServerHttpClient http;
@@ -124,32 +119,16 @@ public class GwcTools {
                 String path = "/gwc/rest/layers/" + layer + ".xml";
                 GeoServerHttpClient.Response current = http.get(ctx, path);
                 if (current.status() != 200) throw new ToolException("GWC " + path + " returned HTTP " + current.status() + ": " + current.text().trim());
-                Document doc = parseXml(current.body());
+                Document doc = SafeXml.parse(current.body());
                 Element root = doc.getDocumentElement();
                 applyChanges(doc, root, args);
-                expectOk(http.send(ctx, "PUT", path, "text/xml", toXml(doc).getBytes(StandardCharsets.UTF_8)), "Tile layer update");
+                expectOk(http.send(ctx, "PUT", path, "text/xml", SafeXml.write(doc).getBytes(StandardCharsets.UTF_8)), "Tile layer update");
                 ObjectNode view = xmlView(root);
                 Map<String, Object> m = new LinkedHashMap<>(tileLayerView(view));
                 m.put("updated", true);
                 return m;
             }
         };
-    }
-
-    static Document parseXml(byte[] body) throws javax.xml.parsers.ParserConfigurationException, org.xml.sax.SAXException, java.io.IOException {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        return dbf.newDocumentBuilder().parse(new ByteArrayInputStream(body));
-    }
-
-    static String toXml(Document doc) throws javax.xml.transform.TransformerException {
-        StringWriter xml = new StringWriter();
-        TransformerFactory tf = TransformerFactory.newInstance();
-        tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");
-        tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
-        tf.newTransformer().transform(new DOMSource(doc), new StreamResult(xml));
-        return xml.toString();
     }
 
     static void applyChanges(Document doc, Element root, Args args) {
