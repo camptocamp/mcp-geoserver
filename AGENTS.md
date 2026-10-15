@@ -95,7 +95,7 @@ GeoWebCache (via GWC REST over HTTP)
 ## Gotchas
 
 - `tools/call` runs on the servlet thread (`immediateExecution(true)`), so `SecurityContextHolder` and the secured catalog work. Do not remove that flag.
-- `gs_get_map`, `gs_check_layer` and `gs_gwc_*` go over HTTP even on vanilla, with the caller's `Authorization` header forwarded. Base URL order: `mcp.internalBaseUrl`, proxy base URL, request URL.
+- `gs_get_map`, `gs_check_layer` and `gs_gwc_*` go over HTTP even on vanilla, with the caller's `Authorization` header forwarded. Base URL order: `mcp.internalBaseUrl`, proxy base URL, request URL. The request-URL fallback is derived from the client `Host` header, so it is accepted only when it resolves to loopback; forwarding credentials to any other request-derived host is refused (set `mcp.internalBaseUrl` behind a proxy). This blocks Host-header SSRF and credential exfiltration.
 - `gs_gwc_set_tile_layer` sends GWC's XML representation; GWC 2.0.1 rejects multi-element JSON updates. `gs_gwc_seed` uses JSON.
 - The MCP stateless transport answers 400 unless `Accept` contains both `application/json` and `text/event-stream`.
 - GeoServer 3.0.1 ships Jackson 3; the zip carries its own Jackson 2.22 core and databind.

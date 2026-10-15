@@ -37,6 +37,7 @@ public class DataTools {
     private static final String HEIGHT = "height";
     private static final String IMAGE_PREFIX = "image/";
     private static final String WIDTH = "width";
+    private static final int MAX_IMAGE_DIMENSION = 8192;
     private static final String BAD_BBOX = "bbox needs exactly 4 numbers";
     private static final String BBOX_PARAM = "&BBOX=";
 
@@ -144,7 +145,7 @@ public class DataTools {
                         + "&LAYERS=" + enc(layers) + "&STYLES=" + enc(styles)
                         + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
                         + "&SRS=" + enc(args.string("srs", "EPSG:4326"))
-                        + "&WIDTH=" + args.integer(WIDTH, 512) + "&HEIGHT=" + args.integer(HEIGHT, 512)
+                        + "&WIDTH=" + dimension(args, WIDTH, 512) + "&HEIGHT=" + dimension(args, HEIGHT, 512)
                         + "&FORMAT=" + enc(format) + "&TRANSPARENT=" + args.bool("transparent", false);
                 GeoServerHttpClient.Response r = http.get(ctx, path);
                 if (r.status() != 200 || !r.contentType().startsWith(IMAGE_PREFIX)) {
@@ -177,8 +178,8 @@ public class DataTools {
                 } else if (bbox.size() != 4) {
                     throw new ToolException(BAD_BBOX);
                 }
-                int width = args.integer(WIDTH, 256);
-                int height = args.integer(HEIGHT, 256);
+                int width = dimension(args, WIDTH, 256);
+                int height = dimension(args, HEIGHT, 256);
                 String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + enc(layer.prefixedName()) + "&STYLES="
                         + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
                         + "&SRS=EPSG:4326&WIDTH=" + width + "&HEIGHT=" + height
@@ -218,6 +219,12 @@ public class DataTools {
             }
         }
         return Math.round(10000.0 * painted / ((long) img.getWidth() * img.getHeight())) / 10000.0;
+    }
+
+    static int dimension(Args args, String key, int dflt) {
+        int v = args.integer(key, dflt);
+        if (v < 1 || v > MAX_IMAGE_DIMENSION) throw new ToolException(key + " must be between 1 and " + MAX_IMAGE_DIMENSION);
+        return v;
     }
 
     static String layerMessage(LayerInfo layer, String problem) {

@@ -93,6 +93,16 @@ public class DataToolsTest extends McpToolTestSupport {
     }
 
     @Test
+    public void getMapRejectsHugeDimension() {
+        var t = tool(tools("").tools(), "gs_get_map");
+        Map<String, Object> args = Map.of(
+                "layers", List.of("cite:Lakes"), "bbox", List.of(0, 0, 1, 1), "width", 100000, "height", 256);
+        var context = ctx();
+        ToolException e = assertThrows(ToolException.class, () -> runRaw(t, context, args));
+        assertTrue(e.getMessage(), e.getMessage().contains("width must be between 1 and 8192"));
+    }
+
+    @Test
     public void getMapServiceExceptionIsToolError() throws Exception {
         String xml = "<ServiceExceptionReport><ServiceException>Could not find layer nope</ServiceException></ServiceExceptionReport>";
         try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "application/vnd.ogc.se_xml", xml))) {

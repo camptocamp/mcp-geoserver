@@ -146,6 +146,24 @@ class GwcToolsTest {
     }
 
     @Test
+    void seedRejectsOutOfRangeZoomAndThreads() {
+        var t = tools("http://localhost");
+        assertTrue(fails(t, "gs_gwc_seed", Map.of("layer", "l", "gridset", "g", "zoomStart", 5, "zoomStop", 2, "format", "image/png"))
+                .getMessage().contains("zoomStart"));
+        assertTrue(fails(t, "gs_gwc_seed", Map.of("layer", "l", "gridset", "g", "zoomStart", 0, "zoomStop", 99, "format", "image/png"))
+                .getMessage().contains("zoomStart"));
+        assertTrue(fails(t, "gs_gwc_seed", Map.of("layer", "l", "gridset", "g", "zoomStart", 0, "zoomStop", 2, "format", "image/png", "threads", 99))
+                .getMessage().contains("threads"));
+    }
+
+    @Test
+    void segEncodesPathReservedCharsButKeepsColon() {
+        assertEquals("..%2F..%2Frest%2Ffoo", GwcTools.seg("../../rest/foo"));
+        assertEquals("ne:nexsis", GwcTools.seg("ne:nexsis"));
+        assertEquals("a%3Fb%23c", GwcTools.seg("a?b#c"));
+    }
+
+    @Test
     void seedWithBboxAndRejectedBbox() throws Exception {
         try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "text/plain", ""))) {
             Map<String, Object> base = Map.of("layer", "topp:states", "gridset", "EPSG:4326", "zoomStart", 0, "zoomStop", 2, "format", "image/png");

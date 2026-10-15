@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -37,6 +38,8 @@ public class GwcTools {
     private static final String WHICH = "which";
     private static final String ZOOM_START = "zoomStart";
     private static final String ZOOM_STOP = "zoomStop";
+    private static final int MAX_ZOOM = 31;
+    private static final int MAX_SEED_THREADS = 16;
 
     private final GeoServerHttpClient http;
     private final ObjectMapper json;
@@ -64,6 +67,12 @@ public class GwcTools {
         if (r.status() < 200 || r.status() >= 300) {
             throw new ToolException(what + " failed with HTTP " + r.status() + ": " + r.text().trim());
         }
+    }
+
+    // A tile layer name (workspace:name) going into a REST path segment: block / ? # so a
+    // crafted value cannot traverse or alter the request path. Keep ':' which is legitimate.
+    static String seg(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20").replace("%3A", ":");
     }
 
     static List<String> strings(JsonNode array) {
@@ -114,7 +123,7 @@ public class GwcTools {
                         .description("Tile layer configuration: enabled flag, formats, gridsets with zoom ranges").build();
             }
             public Object call(ToolContext ctx, Args args) {
-                return tileLayerView(getJson(ctx, "/gwc/rest/layers/" + args.string(Keys.LAYER) + Keys.JSON_EXT));
+                return tileLayerView(getJson(ctx, "/gwc/rest/layers/" + seg(args.string(Keys.LAYER)) + Keys.JSON_EXT));
             }
         };
     }
@@ -131,7 +140,7 @@ public class GwcTools {
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 String layer = args.string(Keys.LAYER);
-                String path = "/gwc/rest/layers/" + layer + ".xml";
+                String path = "/gwc/rest/layers/" + seg(layer) + ".xml";
                 GeoServerHttpClient.Response current = http.get(ctx, path);
                 if (current.status() != 200) throw new ToolException("GWC " + path + " returned HTTP " + current.status() + ": " + current.text().trim());
                 Document doc = SafeXml.parse(current.body());
@@ -216,14 +225,21 @@ public class GwcTools {
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 String layer = args.string(Keys.LAYER);
+                int zoomStart = args.integer(ZOOM_START, 0);
+                int zoomStop = args.integer(ZOOM_STOP, 0);
+                if (zoomStart < 0 || zoomStop > MAX_ZOOM || zoomStop < zoomStart) {
+                    throw new ToolException(ZOOM_START + "/" + ZOOM_STOP + " must satisfy 0 <= " + ZOOM_START + " <= " + ZOOM_STOP + " <= " + MAX_ZOOM);
+                }
+                int threads = args.integer("threads", 1);
+                if (threads < 1 || threads > MAX_SEED_THREADS) throw new ToolException("threads must be between 1 and " + MAX_SEED_THREADS);
                 ObjectNode req = json.createObjectNode();
                 req.put("name", layer);
                 req.put("gridSetId", args.string("gridset"));
-                req.put(ZOOM_START, args.integer(ZOOM_START, 0));
-                req.put(ZOOM_STOP, args.integer(ZOOM_STOP, 0));
+                req.put(ZOOM_START, zoomStart);
+                req.put(ZOOM_STOP, zoomStop);
                 req.put(Keys.FORMAT, args.string(Keys.FORMAT));
                 req.put("type", args.string(OPERATION, "seed"));
-                req.put("threadCount", args.integer("threads", 1));
+                req.put("threadCount", threads);
                 List<Double> bbox = args.numbers("bbox");
                 if (!bbox.isEmpty()) {
                     if (bbox.size() != 4) throw new ToolException("bbox needs exactly 4 numbers");
@@ -232,7 +248,7 @@ public class GwcTools {
                 }
                 ObjectNode wrapper = json.createObjectNode();
                 wrapper.set("seedRequest", req);
-                expectOk(http.send(ctx, "POST", GWC_SEED_PATH + layer + Keys.JSON_EXT, Keys.APPLICATION_JSON, json.writeValueAsBytes(wrapper)), "Seed request");
+                expectOk(http.send(ctx, "POST", GWC_SEED_PATH + seg(layer) + Keys.JSON_EXT, Keys.APPLICATION_JSON, json.writeValueAsBytes(wrapper)), "Seed request");
                 return Map.of("submitted", true, Keys.LAYER, layer, OPERATION, req.get("type").asText());
             }
         };
@@ -253,7 +269,7 @@ public class GwcTools {
                         .description("Running and pending seed tasks with progress").build();
             }
             public Object call(ToolContext ctx, Args args) {
-                String path = args.has(Keys.LAYER) ? GWC_SEED_PATH + args.string(Keys.LAYER) + Keys.JSON_EXT : "/gwc/rest/seed.json";
+                String path = args.has(Keys.LAYER) ? GWC_SEED_PATH + seg(args.string(Keys.LAYER)) + Keys.JSON_EXT : "/gwc/rest/seed.json";
                 JsonNode doc = getJson(ctx, path);
                 List<Map<String, Object>> tasks = new ArrayList<>();
                 for (JsonNode row : doc.path("long-array-array")) {
@@ -280,7 +296,7 @@ public class GwcTools {
                         .description("Stop seed tasks").build();
             }
             public Object call(ToolContext ctx, Args args) {
-                String path = args.has(Keys.LAYER) ? GWC_SEED_PATH + args.string(Keys.LAYER) : "/gwc/rest/seed";
+                String path = args.has(Keys.LAYER) ? GWC_SEED_PATH + seg(args.string(Keys.LAYER)) : "/gwc/rest/seed";
                 String body = "kill_all=" + args.string(WHICH, "all");
                 expectOk(http.send(ctx, "POST", path, "application/x-www-form-urlencoded", body.getBytes(StandardCharsets.UTF_8)), "Kill tasks");
                 return Map.of("killed", args.string(WHICH, "all"));
