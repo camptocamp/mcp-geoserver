@@ -22,7 +22,7 @@
     <gs.version>3.0.1</gs.version>
     <gt.version>35.1</gt.version>
     <gwc.version>2.0.1</gwc.version>
-    <spring.version>7.0.8</spring.version>
+    <spring.version>7.0.9</spring.version>
     <spring.security.version>7.1.0</spring.security.version>
     <mcp.sdk.version>2.0.1</mcp.sdk.version>
     <spring-boot.version>4.0.7</spring-boot.version>
