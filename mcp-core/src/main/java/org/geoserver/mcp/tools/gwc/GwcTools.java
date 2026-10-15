@@ -141,7 +141,10 @@ public class GwcTools {
                     }
                 }
                 StringWriter xml = new StringWriter();
-                TransformerFactory.newInstance().newTransformer().transform(new DOMSource(doc), new StreamResult(xml));
+                TransformerFactory tf = TransformerFactory.newInstance();
+                tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");
+                tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+                tf.newTransformer().transform(new DOMSource(doc), new StreamResult(xml));
                 expectOk(http.send(ctx, "PUT", path, "text/xml", xml.toString().getBytes(StandardCharsets.UTF_8)), "Tile layer update");
                 ObjectNode view = json.createObjectNode();
                 view.put("name", root.getElementsByTagName("name").item(0).getTextContent());
