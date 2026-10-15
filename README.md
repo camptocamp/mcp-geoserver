@@ -19,23 +19,37 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 1. Download `geoserver-mcp-<version>-bin.zip` from the [latest GitHub release](https://github.com/camptocamp/mcp-geoserver/releases/latest) and check it against `SHA256SUMS.txt`.
 2. Unzip the jars into GeoServer's `WEB-INF/lib` and restart GeoServer.
 3. Open the MCP admin page, enable the server and pick the allowed roles.
+4. Connect your MCP client as in step 4 of the quick start.
 
 The zip targets vanilla GeoServer. For GeoServer Cloud, see `docker/cloud/README.md`.
 
-## Releasing
-
-Maintainers: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow sets the Maven version from the tag, runs the unit tests and attaches the zip and its checksum to a GitHub release.
-
 ## Quick start (vanilla GeoServer 3.0.1 in Docker)
 
-```bash
-./mvnw -q package -DskipTests
-docker compose -f docker/vanilla/compose.yml up -d
-curl -u admin:geoserver -X PUT -H 'Content-Type: application/json' \
-  -d '{"enabled":true}' http://localhost:8080/geoserver/rest/mcp/settings
-claude mcp add --transport http geoserver http://localhost:8080/geoserver/mcp \
-  --header "Authorization: Basic $(printf 'admin:geoserver' | base64)"
-```
+1. Build the plugin. This also copies the jars into `docker/vanilla/additional_libs/`.
+
+   ```bash
+   ./mvnw -q package -DskipTests
+   ```
+
+2. Start GeoServer with the plugin.
+
+   ```bash
+   docker compose -f docker/vanilla/compose.yml up -d
+   ```
+
+3. Enable the MCP server. It ships disabled.
+
+   ```bash
+   curl -u admin:geoserver -X PUT -H 'Content-Type: application/json' \
+     -d '{"enabled":true}' http://localhost:8080/geoserver/rest/mcp/settings
+   ```
+
+4. Connect Claude Code.
+
+   ```bash
+   claude mcp add --transport http geoserver http://localhost:8080/geoserver/mcp \
+     --header "Authorization: Basic $(printf 'admin:geoserver' | base64)"
+   ```
 
 ## Enable, disable, verbose
 
@@ -138,3 +152,7 @@ See `docker/cloud/README.md`.
 ./mvnw verify            # unit tests
 ./mvnw verify -Pit       # plus Testcontainers integration test (needs Docker)
 ```
+
+## Releasing
+
+Maintainers: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow sets the Maven version from the tag, runs the unit tests and attaches the zip and its checksum to a GitHub release.
