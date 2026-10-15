@@ -105,4 +105,33 @@ class ToolAdapterTest {
         assertEquals("image/png", c.mimeType());
         assertEquals("AQID", c.data());
     }
+
+    @Test
+    void unexpectedExceptionWithoutMessageNamesItsType() {
+        GsTool broken = new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_broken", Schema.object().build()).description("Broken").build();
+            }
+            public Object call(ToolContext ctx, Args args) {
+                throw new IllegalStateException();
+            }
+        };
+        McpSchema.CallToolResult r = ToolAdapter.invoke(broken, settings(false), json, McpTransportContext.create(Map.of()),
+                McpSchema.CallToolRequest.builder("gs_broken").arguments(Map.of()).build());
+        assertTrue(r.isError());
+        assertEquals("gs_broken failed: IllegalStateException", ((McpSchema.TextContent) r.content().get(0)).text());
+    }
+
+    @Test
+    void rawJsonAndStringPayloadsPassThrough() throws Exception {
+        assertEquals("{\"a\":1}", ((McpSchema.TextContent) ToolAdapter.toContent(new Payloads.RawJson("{\"a\":1}"), json)).text());
+        assertEquals("plain", ((McpSchema.TextContent) ToolAdapter.toContent("plain", json)).text());
+    }
+
+    @Test
+    void explicitAnnotationsAreKept() {
+        McpSchema.ToolAnnotations a = ToolHints.of("gs_delete");
+        McpSchema.Tool t = ToolAdapter.withVerbose(McpSchema.Tool.builder("gs_custom", Schema.object().build()).annotations(a).build());
+        assertEquals(a, t.annotations());
+    }
 }
