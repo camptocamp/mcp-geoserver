@@ -45,8 +45,8 @@ public class McpServerHolder {
     static McpTransportContext context(HttpServletRequest req) {
         Map<String, Object> ctx = new HashMap<>();
         String auth = req.getHeader("Authorization");
-        if (auth != null) ctx.put(ToolContext.AUTHORIZATION, auth);
-        ctx.put(ToolContext.REQUEST_BASE_URL, baseUrl(req));
+        if (auth != null) ctx.put(ToolContext.AUTHORIZATION_KEY, auth);
+        ctx.put(ToolContext.REQUEST_BASE_URL_KEY, baseUrl(req));
         return McpTransportContext.create(ctx);
     }
 

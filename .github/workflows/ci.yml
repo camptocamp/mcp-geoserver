@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -22,14 +21,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml', '.mvn/wrapper/maven-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-m2-
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-      - run: ./mvnw -B verify
+      - run: ./mvnw -B -ntp verify
       # Secrets are absent on Dependabot and fork PRs.
       - name: SonarQube scan and quality gate
         if: env.SONAR_TOKEN != ''
-        run: ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300
+        run: ./mvnw -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300 -Dsonar.scanner.skipJreProvisioning=true
