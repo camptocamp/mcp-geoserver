@@ -19,7 +19,14 @@
         </li>
         <li>
           <label><wicket:message key="McpAdminPage.allowedRoles">Allowed roles (comma separated)</wicket:message></label>
-          <input type="text" wicket:id="allowedRoles" size="60"/>
+          <ul>
+            <li wicket:id="roles">
+              <span wicket:id="role"></span>
+              <button type="submit" wicket:id="remove" class="btn btn-sm" title="Remove">&#215;</button>
+            </li>
+          </ul>
+          <select wicket:id="newRole"></select>
+          <button type="submit" wicket:id="addRole" class="btn btn-sm" title="Add role">+</button>
         </li>
         <li>
           <label><wicket:message key="McpAdminPage.internalBaseUrl">Internal base URL for WMS and GWC calls (optional)</wicket:message></label>

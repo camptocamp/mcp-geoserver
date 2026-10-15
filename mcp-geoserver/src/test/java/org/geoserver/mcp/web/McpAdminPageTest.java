@@ -1,8 +1,11 @@
 package org.geoserver.mcp.web;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+import org.apache.wicket.markup.html.form.DropDownChoice;
 import org.apache.wicket.util.tester.FormTester;
 import org.geoserver.mcp.settings.McpSettingsStore;
 import org.geoserver.web.GeoServerWicketTestSupport;
@@ -19,12 +22,30 @@ public class McpAdminPageTest extends GeoServerWicketTestSupport {
         FormTester form = tester.newFormTester("form");
         form.setValue("enabled", true);
         form.setValue("verbose", true);
-        form.setValue("allowedRoles", "ROLE_ADMINISTRATOR, ROLE_GIS");
         form.submit("submit");
         tester.assertNoErrorMessage();
         var s = new McpSettingsStore(getGeoServer()).load();
         assertTrue(s.enabled());
         assertTrue(s.verbose());
-        assertTrue(s.allowedRoles().contains("ROLE_GIS"));
+    }
+
+    @Test
+    public void addAndRemoveRolesFromExistingOnes() {
+        login();
+        tester.startPage(McpAdminPage.class);
+        var choices = ((DropDownChoice<?>) tester.getComponentFromLastRenderedPage("form:newRole")).getChoices();
+        assertTrue(choices.toString(), choices.contains("ROLE_AUTHENTICATED"));
+        assertFalse(choices.toString(), choices.contains("ROLE_ADMINISTRATOR"));
+
+        FormTester form = tester.newFormTester("form");
+        form.select("newRole", choices.indexOf("ROLE_AUTHENTICATED"));
+        form.submit("addRole");
+        tester.assertLabel("form:roles:0:role", "ROLE_ADMINISTRATOR");
+        tester.assertLabel("form:roles:1:role", "ROLE_AUTHENTICATED");
+
+        tester.newFormTester("form").submit("roles:0:remove");
+        tester.newFormTester("form").submit("submit");
+        tester.assertNoErrorMessage();
+        assertEquals(List.of("ROLE_AUTHENTICATED"), new McpSettingsStore(getGeoServer()).load().allowedRoles());
     }
 }
