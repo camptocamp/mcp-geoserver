@@ -8,6 +8,7 @@ import org.geoserver.config.GeoServer;
 import org.geoserver.mcp.http.GeoServerHttpClient;
 import org.geoserver.mcp.tool.GsTool;
 import org.geoserver.mcp.tools.catalog.AdminTools;
+import org.geoserver.mcp.tools.catalog.DimensionTools;
 import org.geoserver.mcp.tools.catalog.LayerGroupTools;
 import org.geoserver.mcp.tools.catalog.LayerTools;
 import org.geoserver.mcp.tools.catalog.StoreTools;
@@ -26,6 +27,7 @@ public final class ToolRegistry {
         all.addAll(new WorkspaceTools(catalog).tools());
         all.addAll(new StoreTools(catalog).tools());
         all.addAll(new LayerTools(catalog).tools());
+        all.addAll(new DimensionTools(catalog).tools());
         all.addAll(new StyleTools(catalog).tools());
         all.addAll(new LayerGroupTools(catalog).tools());
         all.addAll(new DiscoveryTools().tools());

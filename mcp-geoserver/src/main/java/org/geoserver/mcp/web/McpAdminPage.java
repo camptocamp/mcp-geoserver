@@ -9,6 +9,7 @@ import org.apache.wicket.markup.html.form.Button;
 import org.apache.wicket.markup.html.form.CheckBox;
 import org.apache.wicket.markup.html.form.DropDownChoice;
 import org.apache.wicket.markup.html.form.Form;
+import org.apache.wicket.markup.html.form.NumberTextField;
 import org.apache.wicket.markup.html.form.TextField;
 import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
@@ -26,6 +27,9 @@ public class McpAdminPage extends GeoServerSecuredPage {
     private final List<String> allowedRoles;
     private String newRole;
     private String internalBaseUrl;
+    private boolean readOnly;
+    private int maxListResults;
+    private int maxFeatures;
 
     public McpAdminPage() {
         McpSettingsStore store = store();
@@ -34,12 +38,18 @@ public class McpAdminPage extends GeoServerSecuredPage {
         verbose = s.verbose();
         allowedRoles = new ArrayList<>(s.allowedRoles());
         internalBaseUrl = s.internalBaseUrl();
+        readOnly = s.readOnly();
+        maxListResults = s.maxListResults();
+        maxFeatures = s.maxFeatures();
 
         Form<Void> form = new Form<>("form");
         add(form);
         form.add(new Label("endpoint", endpointUrl()));
         form.add(new CheckBox("enabled", new PropertyModel<>(this, "mcpEnabled")));
         form.add(new CheckBox("verbose", new PropertyModel<>(this, "verbose")));
+        form.add(new CheckBox("readOnly", new PropertyModel<>(this, "readOnly")));
+        form.add(new NumberTextField<>("maxListResults", new PropertyModel<Integer>(this, "maxListResults"), Integer.class).setMinimum(1));
+        form.add(new NumberTextField<>("maxFeatures", new PropertyModel<Integer>(this, "maxFeatures"), Integer.class).setMinimum(1));
         form.add(new ListView<>("roles", allowedRoles) {
             @Override
             protected void populateItem(ListItem<String> item) {
@@ -71,7 +81,7 @@ public class McpAdminPage extends GeoServerSecuredPage {
         form.add(new Button("submit") {
             @Override
             public void onSubmit() {
-                store().save(new McpSettings(mcpEnabled, List.copyOf(allowedRoles), verbose, internalBaseUrl));
+                store().save(new McpSettings(mcpEnabled, List.copyOf(allowedRoles), verbose, internalBaseUrl, readOnly, maxListResults, maxFeatures));
                 info(getString("McpAdminPage.saved"));
             }
         });
