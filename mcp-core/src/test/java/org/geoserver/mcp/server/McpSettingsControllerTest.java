@@ -61,4 +61,23 @@ class McpSettingsControllerTest {
         assertTrue(saved.getValue().verbose());
         assertEquals(List.of("ROLE_ADMINISTRATOR"), saved.getValue().allowedRoles());
     }
+
+    @Test
+    void putRequiresAdmin() throws Exception {
+        when(gate.isAdmin()).thenReturn(false);
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+        controller.put(new MockHttpServletRequest("PUT", "/geoserver/rest/mcp/settings"), resp);
+        assertEquals(403, resp.getStatus());
+    }
+
+    @Test
+    void putReplacesAllowedRoles() throws Exception {
+        when(gate.isAdmin()).thenReturn(true);
+        MockHttpServletRequest req = new MockHttpServletRequest("PUT", "/geoserver/rest/mcp/settings");
+        req.setContent("{\"allowedRoles\":[\"ROLE_A\",\"ROLE_B\"]}".getBytes());
+        controller.put(req, new MockHttpServletResponse());
+        ArgumentCaptor<McpSettings> saved = ArgumentCaptor.forClass(McpSettings.class);
+        verify(settings).save(saved.capture());
+        assertEquals(List.of("ROLE_A", "ROLE_B"), saved.getValue().allowedRoles());
+    }
 }

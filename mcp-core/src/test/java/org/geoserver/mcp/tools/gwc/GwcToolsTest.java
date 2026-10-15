@@ -140,4 +140,95 @@ class GwcToolsTest {
             assertTrue(e.getMessage().contains("Unknown layer: x"), e.getMessage());
         }
     }
+
+    org.geoserver.mcp.tool.ToolException fails(GwcTools t, String name, Map<String, Object> args) {
+        return org.junit.jupiter.api.Assertions.assertThrows(org.geoserver.mcp.tool.ToolException.class, () -> run(t, name, args));
+    }
+
+    @Test
+    void seedWithBboxAndRejectedBbox() throws Exception {
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "text/plain", ""))) {
+            Map<String, Object> base = Map.of("layer", "topp:states", "gridset", "EPSG:4326", "zoomStart", 0, "zoomStop", 2, "format", "image/png");
+            var withBbox = new java.util.HashMap<>(base);
+            withBbox.put("bbox", List.of(-10, -10, 10, 10));
+            run(tools(stub.url()), "gs_gwc_seed", withBbox);
+            JsonNode sent = json.readTree(stub.received.get(0).body());
+            assertEquals(4, sent.at("/seedRequest/bounds/coords/double").size());
+            withBbox.put("bbox", List.of(1, 2));
+            fails(tools(stub.url()), "gs_gwc_seed", withBbox);
+        }
+    }
+
+    @Test
+    void seedHttpErrorIsToolError() throws Exception {
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(500, "text/plain", "boom"))) {
+            var e = fails(tools(stub.url()), "gs_gwc_seed", Map.of("layer", "l", "gridset", "g", "zoomStart", 0, "zoomStop", 1, "format", "image/png"));
+            assertTrue(e.getMessage().contains("HTTP 500: boom"), e.getMessage());
+        }
+    }
+
+    @Test
+    void statusCodes() {
+        assertEquals("ABORTED", GwcTools.status(-1));
+        assertEquals("PENDING", GwcTools.status(0));
+        assertEquals("RUNNING", GwcTools.status(1));
+        assertEquals("DONE", GwcTools.status(2));
+        assertEquals("UNKNOWN", GwcTools.status(9));
+    }
+
+    @Test
+    void listTasksForLayerSkipsShortRows() throws Exception {
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.json("{\"long-array-array\":[[1,2,3],[5,10,7,42,2]]}"))) {
+            JsonNode r = run(tools(stub.url()), "gs_gwc_list_tasks", Map.of("layer", "topp:states"));
+            assertEquals(1, r.get("tasks").size());
+            assertEquals("DONE", r.get("tasks").get(0).get("status").asText());
+            assertEquals("/geoserver/gwc/rest/seed/topp:states.json", stub.received.get(0).path());
+        }
+    }
+
+    @Test
+    void killAllTasks() throws Exception {
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "text/plain", ""))) {
+            JsonNode r = run(tools(stub.url()), "gs_gwc_kill_tasks", Map.of());
+            assertEquals("all", r.get("killed").asText());
+            assertEquals("/geoserver/gwc/rest/seed", stub.received.get(0).path());
+            assertEquals("kill_all=all", stub.received.get(0).body());
+        }
+    }
+
+    @Test
+    void tileLayerOptionalFields() throws Exception {
+        String body = "{\"GeoServerLayer\":{\"name\":\"a\",\"enabled\":true,\"metaWidthHeight\":[4,4],\"expireCache\":60,\"expireClients\":30}}";
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.json(body))) {
+            JsonNode r = run(tools(stub.url()), "gs_gwc_get_tile_layer", Map.of("layer", "a"));
+            assertEquals(2, r.get("metaWidthHeight").size());
+            assertEquals(60, r.get("expireCache").asInt());
+            assertEquals(30, r.get("expireClients").asInt());
+        }
+    }
+
+    @Test
+    void unparseableJsonIsToolError() throws Exception {
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.json("not json"))) {
+            assertTrue(fails(tools(stub.url()), "gs_gwc_list_tile_layers", Map.of()).getMessage().contains("unparseable JSON"));
+        }
+    }
+
+    @Test
+    void setTileLayerAddsMissingListsAndReportsErrors() throws Exception {
+        String bare = "<GeoServerLayer><enabled>true</enabled><name>a</name></GeoServerLayer>";
+        try (StubHttpServer stub = new StubHttpServer(r -> r.method().equals("GET")
+                ? StubHttpServer.Reply.of(200, "text/xml", bare) : StubHttpServer.Reply.of(200, "text/plain", ""))) {
+            JsonNode r = run(tools(stub.url()), "gs_gwc_set_tile_layer", Map.of("layer", "a", "formats", List.of("image/png"), "gridsets", List.of("g")));
+            assertEquals("image/png", r.get("mimeFormats").get(0).asText());
+            assertEquals("g", r.get("gridSubsets").get(0).get("gridSetName").asText());
+        }
+        String noEnabled = "<GeoServerLayer><name>a</name></GeoServerLayer>";
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "text/xml", noEnabled))) {
+            assertTrue(fails(tools(stub.url()), "gs_gwc_set_tile_layer", Map.of("layer", "a", "enabled", false)).getMessage().contains("<enabled>"));
+        }
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(404, "text/plain", "nope"))) {
+            assertTrue(fails(tools(stub.url()), "gs_gwc_set_tile_layer", Map.of("layer", "a")).getMessage().contains("HTTP 404"));
+        }
+    }
 }
