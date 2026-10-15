@@ -1,5 +1,6 @@
 package org.geoserver.mcp.tool;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
@@ -66,7 +67,7 @@ public final class ToolAdapter {
         }
     }
 
-    static McpSchema.Content toContent(Object payload, ObjectMapper json) throws com.fasterxml.jackson.core.JsonProcessingException {
+    static McpSchema.Content toContent(Object payload, ObjectMapper json) throws JsonProcessingException {
         if (payload instanceof Payloads.RawJson raw) return McpSchema.TextContent.builder(raw.json()).build();
         if (payload instanceof Payloads.ImagePayload img) {
             return McpSchema.ImageContent.builder(Base64.getEncoder().encodeToString(img.bytes()), img.mimeType()).build();

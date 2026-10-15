@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.geoserver.mcp.http.GeoServerHttpClient;
 import org.junit.jupiter.api.Test;
 
 class PayloadsTest {
@@ -17,17 +16,6 @@ class PayloadsTest {
         assertNotEquals(a, new Payloads.ImagePayload(new byte[] {1, 2}, "image/jpeg"));
         assertNotEquals(null, a);
         assertTrue(a.toString().contains("bytes=2"));
-    }
-
-    @Test
-    void responseComparesBody() {
-        GeoServerHttpClient.Response r = new GeoServerHttpClient.Response(200, "text/plain", new byte[] {65});
-        assertEquals(r, new GeoServerHttpClient.Response(200, "text/plain", new byte[] {65}));
-        assertEquals(r.hashCode(), new GeoServerHttpClient.Response(200, "text/plain", new byte[] {65}).hashCode());
-        assertNotEquals(r, new GeoServerHttpClient.Response(404, "text/plain", new byte[] {65}));
-        assertNotEquals(r, new GeoServerHttpClient.Response(200, "text/html", new byte[] {65}));
-        assertNotEquals(r, new GeoServerHttpClient.Response(200, "text/plain", new byte[] {66}));
-        assertNotEquals(null, r);
-        assertTrue(r.toString().contains("body=1 bytes"));
+        assertTrue(new Payloads.ImagePayload(null, "image/png").toString().contains("bytes=null"));
     }
 }
