@@ -34,6 +34,9 @@
     <xmlunit.version>1.6</xmlunit.version>
     <jsoup.version>1.23.1</jsoup.version>
     <httpclient5.version>5.4.4</httpclient5.version>
+    <jacoco.version>0.8.15</jacoco.version>
+    <sonar.projectKey>mcp-geoserver</sonar.projectKey>
+    <sonar.projectName>mcp-geoserver</sonar.projectName>
   </properties>
 
   <repositories>
@@ -185,7 +188,7 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>3.5.2</version>
           <configuration>
-            <argLine>-Xmx1g -Djava.awt.headless=true</argLine>
+            <argLine>@{argLine} -Xmx1g -Djava.awt.headless=true</argLine>
           </configuration>
         </plugin>
         <plugin>
@@ -205,5 +208,22 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <goals><goal>prepare-agent</goal></goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals><goal>report</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 </project>

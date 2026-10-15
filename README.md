@@ -160,10 +160,7 @@ Maintainers: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow se
 
 ## Contributing
 
-Issues and pull requests are welcome.
-
-- Bugs and ideas: open an [issue](https://github.com/camptocamp/mcp-geoserver/issues). For a bug, give the GeoServer version, the tool call and the result or error.
-- Code: fork, branch, then open a pull request against `master`. Read `AGENTS.md` first for the layout and conventions. `./mvnw -q verify` must pass; CI runs it on every pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md). To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## License
 
