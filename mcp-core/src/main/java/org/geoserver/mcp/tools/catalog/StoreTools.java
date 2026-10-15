@@ -109,6 +109,22 @@ public class StoreTools {
                 builder.setWorkspace(ws);
                 var vector = DiscoveryTools.vectorFactory(type);
                 if (vector.isPresent()) {
+                    var factory = vector.get();
+                    Set<String> known = new java.util.TreeSet<>();
+                    Set<String> missing = new java.util.TreeSet<>();
+                    for (var p : factory.getParametersInfo()) {
+                        known.add(p.key);
+                        if (p.required && !params.containsKey(p.key) && !"namespace".equals(p.key)) missing.add(p.key);
+                    }
+                    Set<String> unknown = new java.util.TreeSet<>(params.keySet());
+                    unknown.removeAll(known);
+                    unknown.remove("namespace");
+                    if (!unknown.isEmpty() || !missing.isEmpty()) {
+                        throw new ToolException("Invalid params for " + type + ":"
+                                + (unknown.isEmpty() ? "" : " unknown keys " + unknown + ";")
+                                + (missing.isEmpty() ? "" : " missing required keys " + missing + ";")
+                                + " valid keys: " + known);
+                    }
                     DataStoreInfo ds = builder.buildDataStore(name);
                     ds.setType(vector.get().getDisplayName());
                     Map<String, Serializable> conn = new LinkedHashMap<>();

@@ -47,7 +47,7 @@ public class DataTools {
                         .string("cql", "ECQL filter, e.g. NAME = 'Blue Lake' or POPULATION > 1000", false)
                         .numberArray("bbox", "minx, miny, maxx, maxy in the layer's declared SRS", false)
                         .stringArray("properties", "Attributes to return; omit for all", false)
-                        .integer("maxFeatures", "Maximum features, default 100", false).build())
+                        .integer("maxFeatures", "Maximum features, default 100, clamped to 1-10000", false).build())
                         .description("Query a vector layer in process and return GeoJSON").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
@@ -55,7 +55,7 @@ public class DataTools {
                 if (!(layer.getResource() instanceof FeatureTypeInfo ft)) {
                     throw new ToolException("Layer '" + layer.prefixedName() + "' is not a vector layer");
                 }
-                int max = args.integer("maxFeatures", 100);
+                int max = Math.max(1, Math.min(10000, args.integer("maxFeatures", 100)));
                 FilterFactory ff = CommonFactoryFinder.getFilterFactory();
                 Filter filter = Filter.INCLUDE;
                 if (args.has("cql")) {

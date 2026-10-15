@@ -45,12 +45,33 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
         dir.mkdirs();
         JsonNode r = run(tool(new StoreTools(getCatalog()).tools(), "gs_create_store"), Map.of(
                 "workspace", "vec", "name", "props", "type", "Properties",
-                "params", Map.of("directory", dir.getAbsolutePath(), "namespace", "http://vec", "flag", 1)));
+                "params", Map.of("directory", dir.getAbsolutePath(), "namespace", "http://vec")));
         assertTrue(r.get("created").asBoolean());
         assertEquals("vector", r.get("kind").asText());
         DataStoreInfo ds = getCatalog().getDataStoreByName("vec", "props");
-        assertEquals("1", String.valueOf(ds.getConnectionParameters().get("flag")));
+        assertEquals(dir.getAbsolutePath(), String.valueOf(ds.getConnectionParameters().get("directory")));
         assertEquals("Properties", ds.getType());
+    }
+
+    @Test
+    public void createVectorStoreRejectsUnknownKeyAndCreatesNothing() throws Exception {
+        run(tool(new WorkspaceTools(getCatalog()).tools(), "gs_create_workspace"), Map.of("name", "unk"));
+        var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
+        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of(
+                "workspace", "unk", "name", "props", "type", "Properties",
+                "params", Map.of("directory", "/tmp", "bogus", "x"))));
+        assertTrue(e.getMessage(), e.getMessage().contains("unknown keys [bogus]"));
+        assertNull(getCatalog().getDataStoreByName("unk", "props"));
+    }
+
+    @Test
+    public void createVectorStoreRejectsMissingRequiredKey() throws Exception {
+        run(tool(new WorkspaceTools(getCatalog()).tools(), "gs_create_workspace"), Map.of("name", "mis"));
+        var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
+        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of(
+                "workspace", "mis", "name", "props", "type", "Properties", "params", Map.of())));
+        assertTrue(e.getMessage(), e.getMessage().contains("missing required keys [directory]"));
+        assertNull(getCatalog().getDataStoreByName("mis", "props"));
     }
 
     @Test
@@ -108,6 +129,16 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
         JsonNode again = run(t, Map.of("name", "red", "workspace", "cite", "body", SLD.replace("#ff0000", "#00ff00")));
         assertFalse(again.get("created").asBoolean());
         assertTrue(getCatalog().getResourcePool().readStyle(s).lines().anyMatch(line -> line.contains("#00ff00")));
+    }
+
+    @Test
+    public void putStyleDetectsSld11WithSingleQuotes() throws Exception {
+        String sld11 = "<?xml version=\"1.0\"?><StyledLayerDescriptor version = '1.1.0' xmlns=\"http://www.opengis.net/sld\""
+                + " xmlns:se=\"http://www.opengis.net/se\"><NamedLayer><se:Name>t</se:Name><UserStyle><se:FeatureTypeStyle><se:Rule>"
+                + "<se:PolygonSymbolizer><se:Fill><se:SvgParameter name=\"fill\">#ff0000</se:SvgParameter></se:Fill></se:PolygonSymbolizer>"
+                + "</se:Rule></se:FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>";
+        run(tool(new StyleTools(getCatalog()).tools(), "gs_put_style"), Map.of("name", "v11", "workspace", "cite", "body", sld11));
+        assertEquals("1.1.0", getCatalog().getStyleByName("cite", "v11").getFormatVersion().toString());
     }
 
     @Test

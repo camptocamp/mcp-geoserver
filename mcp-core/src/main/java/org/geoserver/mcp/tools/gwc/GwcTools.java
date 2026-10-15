@@ -123,7 +123,10 @@ public class GwcTools {
                 String path = "/gwc/rest/layers/" + layer + ".xml";
                 GeoServerHttpClient.Response current = http.get(ctx, path);
                 if (current.status() != 200) throw new ToolException("GWC " + path + " returned HTTP " + current.status() + ": " + current.text().trim());
-                Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(current.body()));
+                DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+                dbf.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
+                dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+                Document doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(current.body()));
                 Element root = doc.getDocumentElement();
                 if (args.has("enabled")) child(root, "enabled").setTextContent(String.valueOf(args.bool("enabled", true)));
                 if (args.has("formats")) {

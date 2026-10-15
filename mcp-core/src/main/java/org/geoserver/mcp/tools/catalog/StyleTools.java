@@ -23,6 +23,8 @@ import org.geoserver.mcp.tool.Schema;
 import org.geoserver.mcp.tool.ToolContext;
 
 public class StyleTools {
+    private static final java.util.regex.Pattern SLD_11_ROOT = java.util.regex.Pattern.compile(
+            "<(?:\\w+:)?StyledLayerDescriptor\\b[^>]*?\\sversion\\s*=\\s*(['\"])1\\.1\\.0\\1");
     protected final Catalog catalog;
 
     public StyleTools(Catalog catalog) {
@@ -98,7 +100,7 @@ public class StyleTools {
                 String body = args.string("body");
                 StyleHandler handler = handler(args.string("format", SLDHandler.FORMAT));
                 Version version = SLDHandler.FORMAT.equals(handler.getFormat())
-                        ? (body.contains("version=\"1.1.0\"") ? SLDHandler.VERSION_11 : SLDHandler.VERSION_10)
+                        ? (SLD_11_ROOT.matcher(body).find() ? SLDHandler.VERSION_11 : SLDHandler.VERSION_10)
                         : handler.getVersions().get(0);
                 try {
                     var parsed = handler.parse(new StringReader(body), version, null, null);

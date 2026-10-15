@@ -45,6 +45,8 @@ public class ToolRegistryTest extends McpToolTestSupport {
         assertEquals(19, readOnly);
         assertTrue(ToolHints.of("gs_delete").destructiveHint());
         assertTrue(ToolHints.of("gs_gwc_seed").destructiveHint());
+        assertTrue(ToolHints.of("gs_gwc_set_tile_layer").destructiveHint());
+        assertTrue(ToolHints.of("gs_gwc_set_tile_layer").idempotentHint());
         assertFalse(ToolHints.of("gs_create_store").destructiveHint());
     }
 }

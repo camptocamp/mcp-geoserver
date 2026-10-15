@@ -39,14 +39,14 @@ layer = QgsProject.instance().mapLayersByName("LAYER")[0]
 if Qgis.QGIS_VERSION_INT >= 34400:
     ctx = QgsSldExportContext()
     body = layer.exportSldStyleV3(ctx).toString()
-    print(ctx.errors())
+    print(ctx.errors(), ctx.warnings())
 else:
     layer.saveSldStyle("/tmp/LAYER.sld")
     body = open("/tmp/LAYER.sld").read()
 open("/tmp/LAYER.sld", "w").write(body)
 ```
 
-Report every entry of `ctx.errors()` to the user: these are parts QGIS could not export.
+Report every entry of `ctx.errors()` and `ctx.warnings()` to the user: these are parts QGIS could not export or changed.
 
 ## 3. Fix what QGIS writes and GeoServer cannot use
 
@@ -61,7 +61,8 @@ Read `/tmp/LAYER.sld` and check:
   print(path, bool(path) and os.path.exists(path))
   ```
 
-  If the file does not exist, QGIS itself is drawing a fallback marker: stop and ask the user to pick a real SVG in QGIS. Otherwise upload that file next to the style and set the href to the bare file name plus any `?fill=...` query (verified on GeoServer 3.0.1: `param(fill)` in the SVG is honoured):
+  If the file does not exist, QGIS itself is drawing a fallback marker: stop and ask the user to pick a real SVG in QGIS. Otherwise upload that file next to the style, named after the SVG's file name, and set the href to the bare file name plus any `?fill=...` query (verified on GeoServer 3.0.1: `param(fill)` in the SVG is honoured):
+  `$GS_URL` is the GeoServer base URL without `/mcp` (for example `http://localhost:8080/geoserver`) and `$GS_AUTH` is `user:password`:
   `curl -u "$GS_AUTH" -X PUT -H 'Content-Type: image/svg+xml' --data-binary @"$SVG_PATH" "$GS_URL/rest/resource/styles/NAME.svg"`
   For a workspace style, use `/rest/resource/workspaces/WS/styles/NAME.svg`.
 - Every `ogc:PropertyName` must exist on the GeoServer layer (`gs_get_layer`). QGIS ignores unknown fields; GeoServer rejects the whole GetMap.
@@ -69,7 +70,7 @@ Read `/tmp/LAYER.sld` and check:
 
 ## 4. Push
 
-`gs_put_style(name, workspace, body)`, then `gs_update_layer(name, defaultStyle)`. On an `Invalid sld` error, fix the named element and push again.
+`gs_put_style(name, workspace, body)`, then `gs_update_layer(name, defaultStyle)`. For a workspace style, `defaultStyle` must be `workspace:name`. GeoServer layer names may differ from QGIS layer names: look the layer up with `gs_list_layers` first. On an `Invalid sld` error, fix the named element and push again.
 
 ## 5. Compare, always
 
@@ -78,7 +79,7 @@ GeoServer validation does not catch broken SVG references, so compare after ever
 QGIS render, with `execute_code`:
 
 ```python
-from qgis.core import QgsProject, QgsMapSettings, QgsMapRendererSequentialJob, QgsRectangle, QgsCoordinateReferenceSystem
+from qgis.core import QgsProject, QgsMapSettings, QgsMapRendererSequentialJob, QgsRectangle
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QColor
 W, H = 800, 500
@@ -104,7 +105,8 @@ print(layer.crs().authid(), v.xMinimum(), v.yMinimum(), v.xMaximum(), v.yMaximum
 
 GeoServer render: `gs_get_map` with the printed CRS and bbox, width 800, height 500. Look at both images side by side and name every difference you see. Expect small label placement and antialiasing differences; anything else is a real difference.
 
-For a number, fetch the GetMap PNG to `/tmp/gs_LAYER.png` and run:
+For a number, fetch the GetMap PNG with the same bbox, SRS and size, then run the comparison:
+`curl -s -u "$GS_AUTH" -o /tmp/gs_LAYER.png "$GS_URL/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=WS:LAYER&STYLES=&SRS=EPSG:XXXX&BBOX=minx,miny,maxx,maxy&WIDTH=800&HEIGHT=500&FORMAT=image/png"`
 `compare -metric AE -fuzz 10% /tmp/qgis_LAYER.png /tmp/gs_LAYER.png /tmp/diff_LAYER.png`
 In the reference spike, matching styles gave 0 to 3% of pixels; a broken marker gave 15%.
 

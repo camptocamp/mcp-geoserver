@@ -34,6 +34,16 @@ public class DataToolsTest extends McpToolTestSupport {
     }
 
     @Test
+    public void queryFeaturesClampsMaxFeatures() throws Exception {
+        for (int max : new int[] {0, 1000000}) {
+            Object out = runRaw(tool(tools("").tools(), "gs_query_features"), ctx(), Map.of("layer", "cite:Lakes", "maxFeatures", max));
+            JsonNode fc = json.readTree(((Payloads.RawJson) out).json());
+            assertEquals("FeatureCollection", fc.get("type").asText());
+            assertTrue(fc.get("features").size() >= 1);
+        }
+    }
+
+    @Test
     public void queryFeaturesAppliesCqlAndProperties() throws Exception {
         Object out = runRaw(tool(tools("").tools(), "gs_query_features"), ctx(), Map.of(
                 "layer", "Lakes", "cql", "NAME = 'Blue Lake'", "properties", List.of("NAME")));

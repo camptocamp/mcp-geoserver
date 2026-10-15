@@ -61,7 +61,8 @@ public class GeoServerHttpClient {
             String ct = r.headers().firstValue("Content-Type").orElse("application/octet-stream");
             return new Response(r.statusCode(), ct, r.body());
         } catch (IOException e) {
-            throw new ToolException("HTTP " + method + " " + url + " failed: " + e.getMessage());
+            throw new ToolException("HTTP " + method + " " + url + " failed: " + e.getMessage()
+                    + "; set mcp.internalBaseUrl if GeoServer cannot reach itself at this URL");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ToolException("HTTP " + method + " " + url + " interrupted");

@@ -1,6 +1,6 @@
 # Plugin coverage
 
-Nothing here is hardcoded. The live answer for a server is `gs_list_store_types` and `gs_list_modules`. Plugin jars must be installed globally: `WEB-INF/lib` on vanilla, the derived image on Cloud. The Testcontainers IT exercised only a GeoTIFF store, the `gs_*` publish, style and map flow, and a GWC tile layer update.
+Nothing here is hardcoded. The live answer for a server is `gs_list_store_types` and `gs_list_modules`. Plugin jars must be installed globally: `WEB-INF/lib` on vanilla, the derived image on Cloud. The Testcontainers IT exercised only a GeoTIFF store, `gs_list_store_types`, the `gs_*` publish, style and map flow, and a GWC tile layer update.
 
 ## Rules
 

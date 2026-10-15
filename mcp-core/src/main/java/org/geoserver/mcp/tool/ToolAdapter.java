@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 import org.geoserver.mcp.settings.McpSettingsStore;
 
 public final class ToolAdapter {
-    private static final Logger COMMANDS = Logger.getLogger("org.geoserver.mcp.commands");
+    private static final Logger COMMANDS = org.geotools.util.logging.Logging.getLogger("org.geoserver.mcp.commands");
     private static final Logger LOG = Logger.getLogger(ToolAdapter.class.getName());
 
     private ToolAdapter() {}
