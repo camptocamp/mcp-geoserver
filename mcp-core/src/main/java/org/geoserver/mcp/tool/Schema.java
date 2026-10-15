@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 public final class Schema {
+    private static final String STRING = "string";
+
     private final Map<String, Object> properties = new LinkedHashMap<>();
     private final List<String> required = new ArrayList<>();
 
@@ -16,7 +18,7 @@ public final class Schema {
     }
 
     public Schema string(String name, String description, boolean req) {
-        return add(name, prop("string", description), req);
+        return add(name, prop(STRING, description), req);
     }
 
     public Schema integer(String name, String description, boolean req) {
@@ -28,7 +30,7 @@ public final class Schema {
     }
 
     public Schema stringArray(String name, String description, boolean req) {
-        return add(name, prop("array", description, "items", Map.of("type", "string")), req);
+        return add(name, prop("array", description, "items", Map.of("type", STRING)), req);
     }
 
     public Schema numberArray(String name, String description, boolean req) {
@@ -40,7 +42,7 @@ public final class Schema {
     }
 
     public Schema enumeration(String name, String description, boolean req, String... values) {
-        return add(name, prop("string", description, "enum", List.of(values)), req);
+        return add(name, prop(STRING, description, "enum", List.of(values)), req);
     }
 
     private static Map<String, Object> prop(String type, String description) {
