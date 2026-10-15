@@ -35,6 +35,7 @@ public final class Keys {
     public static final String RASTER = "raster";
     public static final String RECURSE = "recurse";
     public static final String REST_WORKSPACES = "/rest/workspaces/";
+    public static final String SKIPPED = "skipped";
     public static final String STORE = "store";
     public static final String STRING = "string";
     public static final String STYLE = "style";

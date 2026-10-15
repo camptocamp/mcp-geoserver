@@ -144,7 +144,7 @@ public class LayerTools {
                 Map<String, Object> m = new java.util.LinkedHashMap<>();
                 m.put(Keys.STORE, ws.getName() + ":" + ds.getName());
                 m.put("published", items.stream().filter(i -> Boolean.TRUE.equals(i.get(Keys.CREATED))).count());
-                m.put("skipped", items.stream().filter(i -> i.containsKey("skipped")).count());
+                m.put(Keys.SKIPPED, items.stream().filter(i -> i.containsKey(Keys.SKIPPED)).count());
                 m.put("failed", items.stream().filter(i -> i.containsKey("error")).count());
                 m.put("items", items);
                 return m;
@@ -166,7 +166,7 @@ public class LayerTools {
         try {
             item = publishVector(ctx, ds, name, null, null, null, nonSpatial, null);
         } catch (Skipped e) {
-            item = new java.util.LinkedHashMap<>(Map.of("name", name, "skipped", true, "warnings", List.of(e.getMessage())));
+            item = new java.util.LinkedHashMap<>(Map.of("name", name, Keys.SKIPPED, true, "warnings", List.of(e.getMessage())));
         } catch (Exception e) {
             item = new java.util.LinkedHashMap<>(Map.of("name", name, "error", JdbcConnectionCheck.rootMessage(e)));
         }

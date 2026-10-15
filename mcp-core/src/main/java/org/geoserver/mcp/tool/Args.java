@@ -34,7 +34,7 @@ public final class Args {
         try {
             return Integer.parseInt(v.toString());
         } catch (NumberFormatException e) {
-            throw new ToolException("Argument '" + key + "' must be an integer");
+            throw invalid(key, "an integer");
         }
     }
 
@@ -64,7 +64,7 @@ public final class Args {
             for (Object o : c) out.add(o instanceof Number n ? n.doubleValue() : Double.parseDouble(String.valueOf(o)));
             return out;
         }
-        throw new ToolException("Argument '" + key + "' must be an array of numbers");
+        throw invalid(key, "an array of numbers");
     }
 
     @SuppressWarnings("unchecked")
@@ -72,6 +72,10 @@ public final class Args {
         Object v = raw.get(key);
         if (v == null) return Map.of();
         if (v instanceof Map<?, ?> m) return (Map<String, Object>) m;
-        throw new ToolException("Argument '" + key + "' must be an object");
+        throw invalid(key, "an object");
+    }
+
+    private static ToolException invalid(String key, String expected) {
+        return new ToolException("Argument '" + key + "' must be " + expected);
     }
 }

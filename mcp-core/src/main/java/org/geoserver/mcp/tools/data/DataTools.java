@@ -34,6 +34,9 @@ import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geoserver.mcp.tool.Keys;
 
 public class DataTools {
+    private static final String BAD_BBOX = "bbox needs exactly 4 numbers";
+    private static final String BBOX_PARAM = "&BBOX=";
+
     private final Catalog catalog;
     private final GeoServerHttpClient http;
 
@@ -60,7 +63,7 @@ public class DataTools {
             public Object call(ToolContext ctx, Args args) throws Exception {
                 LayerInfo layer = Lookups.layer(catalog, args.string(Keys.LAYER));
                 if (!(layer.getResource() instanceof FeatureTypeInfo ft)) {
-                    throw new ToolException("Layer '" + layer.prefixedName() + "' is not a vector layer");
+                    throw new ToolException(layerMessage(layer, "is not a vector layer"));
                 }
                 int max = Math.max(1, Math.min(10000, args.integer("maxFeatures", 100)));
                 FilterFactory ff = CommonFactoryFinder.getFilterFactory();
@@ -75,7 +78,7 @@ public class DataTools {
                 if (!props.isEmpty()) query.setPropertyNames(props);
                 Object fc = fs.getFeatures(query);
                 if (!(fc instanceof SimpleFeatureCollection sfc)) {
-                    throw new ToolException("Layer '" + layer.prefixedName() + "' is not a simple feature layer; use WFS directly");
+                    throw new ToolException(layerMessage(layer, "is not a simple feature layer; use WFS directly"));
                 }
                 return new Payloads.RawJson(GeoJSONWriter.toGeoJSON(sfc));
             }
@@ -93,7 +96,7 @@ public class DataTools {
 
     static Filter bboxFilter(FeatureTypeInfo ft, List<Double> bbox, FilterFactory ff) throws java.io.IOException {
         if (bbox.isEmpty()) return Filter.INCLUDE;
-        if (bbox.size() != 4) throw new ToolException("bbox needs exactly 4 numbers");
+        if (bbox.size() != 4) throw new ToolException(BAD_BBOX);
         var gd = ft.getFeatureType().getGeometryDescriptor();
         return ff.bbox(ff.property(gd == null ? null : gd.getLocalName()), bbox.get(0), bbox.get(1), bbox.get(2), bbox.get(3), ft.getSRS());
     }
@@ -108,7 +111,7 @@ public class DataTools {
         StringBuilder q = new StringBuilder("/wfs?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&OUTPUTFORMAT=application/json&COUNT=" + max
                 + "&TYPENAMES=" + enc(layer.prefixedName()));
         if (args.has("cql")) q.append("&CQL_FILTER=").append(enc(args.string("cql")));
-        if (!bbox.isEmpty()) q.append("&BBOX=").append(bbox.stream().map(String::valueOf).collect(Collectors.joining(",")));
+        if (!bbox.isEmpty()) q.append(BBOX_PARAM).append(bbox.stream().map(String::valueOf).collect(Collectors.joining(",")));
         if (!props.isEmpty()) q.append("&PROPERTYNAME=").append(enc(String.join(",", props)));
         return q.toString();
     }
@@ -129,14 +132,14 @@ public class DataTools {
             }
             public Object call(ToolContext ctx, Args args) {
                 List<Double> bbox = args.numbers("bbox");
-                if (bbox.size() != 4) throw new ToolException("bbox needs exactly 4 numbers");
+                if (bbox.size() != 4) throw new ToolException(BAD_BBOX);
                 String layers = String.join(",", args.strings("layers"));
                 if (layers.isBlank()) throw new ToolException("At least one layer is required");
                 String styles = String.join(",", args.strings("styles"));
                 String format = args.string("format", "image/png");
                 String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
                         + "&LAYERS=" + enc(layers) + "&STYLES=" + enc(styles)
-                        + "&BBOX=" + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
+                        + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
                         + "&SRS=" + enc(args.string("srs", "EPSG:4326"))
                         + "&WIDTH=" + args.integer(Keys.WIDTH, 512) + "&HEIGHT=" + args.integer(Keys.HEIGHT, 512)
                         + "&FORMAT=" + enc(format) + "&TRANSPARENT=" + args.bool("transparent", false);
@@ -166,15 +169,15 @@ public class DataTools {
                 List<Double> bbox = args.numbers("bbox");
                 if (bbox.isEmpty()) {
                     ReferencedEnvelope ll = layer.getResource().getLatLonBoundingBox();
-                    if (ll == null) throw new ToolException("Layer '" + layer.prefixedName() + "' has no lat/lon bounds; pass bbox");
+                    if (ll == null) throw new ToolException(layerMessage(layer, "has no lat/lon bounds; pass bbox"));
                     bbox = List.of(ll.getMinX(), ll.getMinY(), ll.getMaxX(), ll.getMaxY());
                 } else if (bbox.size() != 4) {
-                    throw new ToolException("bbox needs exactly 4 numbers");
+                    throw new ToolException(BAD_BBOX);
                 }
                 int width = args.integer(Keys.WIDTH, 256);
                 int height = args.integer(Keys.HEIGHT, 256);
                 String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + enc(layer.prefixedName()) + "&STYLES="
-                        + "&BBOX=" + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
+                        + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
                         + "&SRS=EPSG:4326&WIDTH=" + width + "&HEIGHT=" + height
                         + "&FORMAT=" + enc("image/png") + "&TRANSPARENT=true&EXCEPTIONS=" + enc("application/vnd.ogc.se_xml");
                 long start = System.nanoTime();
@@ -212,6 +215,10 @@ public class DataTools {
             }
         }
         return Math.round(10000.0 * painted / ((long) img.getWidth() * img.getHeight())) / 10000.0;
+    }
+
+    static String layerMessage(LayerInfo layer, String problem) {
+        return "Layer '" + layer.prefixedName() + "' " + problem;
     }
 
     static String enc(String s) {
