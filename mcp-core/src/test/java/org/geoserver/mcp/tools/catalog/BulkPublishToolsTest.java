@@ -97,7 +97,7 @@ public class BulkPublishToolsTest extends McpToolTestSupport {
     public void getStoreReportsUnreachableStoreWithoutFailing() throws Exception {
         JsonNode r = run(tool(new StoreTools(getCatalog()).tools(), "gs_get_store"), Map.of("workspace", "cite", "name", "pgdown"));
         assertNull(r.get("available"));
-        assertTrue(r.get("availableError").asText().length() > 0);
+        assertTrue(!r.get("availableError").asText().isEmpty());
     }
 
     @Test

@@ -200,7 +200,7 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
     public void validateStyleReportsParseErrorWithoutThrowing() throws Exception {
         JsonNode r = validate(Map.of("body", "<StyledLayerDescriptor>"));
         assertFalse(r.get("valid").asBoolean());
-        assertTrue(r.get("parseError").asText(), r.get("parseError").asText().length() > 0);
+        assertTrue(r.get("parseError").asText(), !r.get("parseError").asText().isEmpty());
     }
 
     @Test
