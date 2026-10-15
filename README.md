@@ -3,6 +3,8 @@
 [![Latest release](https://img.shields.io/github/v/release/camptocamp/mcp-geoserver?color=brightgreen&label=release)](https://github.com/camptocamp/mcp-geoserver/releases/latest)
 [![License: GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 [![Tests](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml)
+[![Security policy](https://img.shields.io/badge/security-policy-informational)](SECURITY.md)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](.github/dependabot.yml)
 
 An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles or bring them over from QGIS, query features, look at rendered maps, seed tile caches.
 
