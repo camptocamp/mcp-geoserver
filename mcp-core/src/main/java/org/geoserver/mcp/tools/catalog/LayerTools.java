@@ -92,7 +92,7 @@ public class LayerTools {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string(Keys.STORE));
                 if (store instanceof DataStoreInfo ds) {
-                    return publishVector(ctx, ds, args.string(Keys.NATIVE_NAME), args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null);
+                    return publishVector(ctx, ds, new VectorRequest(args.string(Keys.NATIVE_NAME), args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null));
                 }
                 if (!(store instanceof CoverageStoreInfo)) {
                     throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
@@ -164,7 +164,7 @@ public class LayerTools {
         long start = System.nanoTime();
         Map<String, Object> item;
         try {
-            item = publishVector(ctx, ds, name, null, null, null, nonSpatial, null);
+            item = publishVector(ctx, ds, new VectorRequest(name, null, null, null, nonSpatial, null));
         } catch (Skipped e) {
             item = new java.util.LinkedHashMap<>(Map.of("name", name, Keys.SKIPPED, true, "warnings", List.of(e.getMessage())));
         } catch (Exception e) {
@@ -205,7 +205,7 @@ public class LayerTools {
                                 "virtualTable", Map.of("name", name, "sql", args.string("sql"), Keys.GEOMETRY, Map.of("name", args.string(Keys.GEOMETRY), "type", type.getName(), "srid", args.integer("srid", 0)))))))));
                 jdbc.createVirtualTable(view);
                 try {
-                    return publishVector(ctx, ds, name, null, null, null, true, view);
+                    return publishVector(ctx, ds, new VectorRequest(name, null, null, null, true, view));
                 } catch (Exception e) {
                     jdbc.dropVirtualTable(name);
                     throw e;
@@ -220,7 +220,11 @@ public class LayerTools {
         }
     }
 
-    Map<String, Object> publishVector(ToolContext ctx, DataStoreInfo store, String nativeName, String name, String title, String srs, boolean includeNonSpatial, VirtualTable view) throws Exception {
+    record VectorRequest(String nativeName, String name, String title, String srs, boolean includeNonSpatial, VirtualTable view) {}
+
+    Map<String, Object> publishVector(ToolContext ctx, DataStoreInfo store, VectorRequest req) throws Exception {
+        String nativeName = req.nativeName();
+        String name = req.name();
         WorkspaceInfo ws = store.getWorkspace();
         String layerName = name == null ? nativeName : name;
         LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + layerName);
@@ -236,10 +240,10 @@ public class LayerTools {
         if (reused) {
             warnings.add("Reused feature type '" + layerName + "' that had no layer");
         } else {
-            ft = newFeatureType(builder, store, nativeName, includeNonSpatial, view, warnings);
+            ft = newFeatureType(builder, store, nativeName, req.includeNonSpatial(), req.view(), warnings);
             if (name != null) ft.setName(name);
-            if (title != null) ft.setTitle(title);
-            setupSrsAndBounds(builder, ft, srs, warnings);
+            if (req.title() != null) ft.setTitle(req.title());
+            setupSrsAndBounds(builder, ft, req.srs(), warnings);
         }
         LayerInfo layer = builder.buildLayer(ft);
         if (!reused) catalog.add(ft);

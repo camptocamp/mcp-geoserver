@@ -132,15 +132,10 @@ public class StoreTools {
                 List<Map<String, Object>> geoms = new ArrayList<>();
                 for (PropertyDescriptor d : da.getSchema(new NameImpl(name)).getDescriptors()) {
                     if (!(d instanceof GeometryDescriptor g)) continue;
-                    Integer srid = null;
-                    try {
-                        srid = g.getCoordinateReferenceSystem() == null ? null : CRS.lookupEpsgCode(g.getCoordinateReferenceSystem(), false);
-                    } catch (Exception ignored) {
-                    }
                     Map<String, Object> geom = new LinkedHashMap<>();
                     geom.put("column", g.getLocalName());
                     geom.put("type", g.getType().getBinding().getSimpleName());
-                    geom.put("srid", srid);
+                    geom.put("srid", srid(g));
                     geoms.add(geom);
                 }
                 t.put("geometries", geoms);
@@ -150,6 +145,15 @@ public class StoreTools {
             out.add(t);
         }
         return out;
+    }
+
+    static Integer srid(GeometryDescriptor g) {
+        if (g.getCoordinateReferenceSystem() == null) return null;
+        try {
+            return CRS.lookupEpsgCode(g.getCoordinateReferenceSystem(), false);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     GsTool create() {

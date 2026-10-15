@@ -103,8 +103,8 @@ public final class Views {
         m.put("abstract", r.getAbstract());
         m.put("srs", r.getSRS());
         m.put("projectionPolicy", String.valueOf(r.getProjectionPolicy()));
-        m.put("nativeBoundingBox", bbox(r.getNativeBoundingBox()));
-        m.put("latLonBoundingBox", bbox(r.getLatLonBoundingBox()));
+        putBbox(m, "nativeBoundingBox", r.getNativeBoundingBox());
+        putBbox(m, "latLonBoundingBox", r.getLatLonBoundingBox());
         m.put("defaultStyle", l.getDefaultStyle() == null ? null : l.getDefaultStyle().prefixedName());
         List<String> styles = new ArrayList<>();
         for (StyleInfo s : l.getStyles()) styles.add(s.prefixedName());
@@ -134,7 +134,7 @@ public final class Views {
         m.put("store", r.getStore().getWorkspace().getName() + ":" + r.getStore().getName());
         m.put("nativeName", r.getNativeName());
         m.put("srs", r.getSRS());
-        m.put("nativeBoundingBox", bbox(r.getNativeBoundingBox()));
+        putBbox(m, "nativeBoundingBox", r.getNativeBoundingBox());
         m.put("defaultStyle", l.getDefaultStyle() == null ? null : l.getDefaultStyle().prefixedName());
         m.put("created", created);
         if (!warnings.isEmpty()) m.put("warnings", warnings);
@@ -167,12 +167,15 @@ public final class Views {
             layers.add(e);
         }
         m.put("layers", layers);
-        m.put("bounds", bbox(g.getBounds()));
+        putBbox(m, "bounds", g.getBounds());
         return m;
     }
 
+    static void putBbox(Map<String, Object> m, String key, ReferencedEnvelope e) {
+        m.put(key, e == null ? null : bbox(e));
+    }
+
     public static Map<String, Object> bbox(ReferencedEnvelope e) {
-        if (e == null) return null;
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("minx", e.getMinX());
         m.put("miny", e.getMinY());

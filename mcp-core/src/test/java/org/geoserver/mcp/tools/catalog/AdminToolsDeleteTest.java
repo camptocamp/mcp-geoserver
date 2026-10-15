@@ -85,7 +85,8 @@ class AdminToolsDeleteTest {
         verify(catalog).remove(store);
 
         when(catalog.getResourcesByStore(store, ResourceInfo.class)).thenReturn(List.of(mock(ResourceInfo.class)));
-        ToolException e = assertThrows(ToolException.class, () -> call(Map.of("kind", "store", "workspace", "w", "name", "s")));
+        Map<String, Object> args = Map.of("kind", "store", "workspace", "w", "name", "s");
+        ToolException e = assertThrows(ToolException.class, () -> call(args));
         assertTrue(e.getMessage().contains("recurse=true"));
     }
 
@@ -94,13 +95,15 @@ class AdminToolsDeleteTest {
         StyleInfo style = mock(StyleInfo.class);
         when(catalog.getStyleByName("s")).thenReturn(style);
         doThrow(new IllegalArgumentException("in use")).when(catalog).remove(style);
-        ToolException e = assertThrows(ToolException.class, () -> call(Map.of("kind", "style", "name", "s")));
+        Map<String, Object> args = Map.of("kind", "style", "name", "s");
+        ToolException e = assertThrows(ToolException.class, () -> call(args));
         assertEquals("Cannot delete style 's': in use. Pass recurse=true to cascade.", e.getMessage());
     }
 
     @Test
     void unknownKindIsRejected() throws Exception {
-        assertThrows(ToolException.class, () -> call(Map.of("kind", "map", "name", "x")));
+        Map<String, Object> args = Map.of("kind", "map", "name", "x");
+        assertThrows(ToolException.class, () -> call(args));
     }
 
     @Test

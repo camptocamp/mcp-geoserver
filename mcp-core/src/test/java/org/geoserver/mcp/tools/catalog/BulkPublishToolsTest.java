@@ -146,9 +146,11 @@ public class BulkPublishToolsTest extends McpToolTestSupport {
         var t = tool(new LayerTools(getCatalog()).tools(), "gs_publish_layers");
         List<String> names = new ArrayList<>();
         for (int i = 0; i < 51; i++) names.add("t" + i);
-        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of("workspace", "cite", "store", "named", "names", names)));
+        Map<String, Object> args = Map.of("workspace", "cite", "store", "named", "names", names);
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
         assertTrue(e.getMessage(), e.getMessage().contains("50"));
-        assertThrows(ToolException.class, () -> run(t, Map.of("workspace", "cite", "store", "named")));
+        Map<String, Object> args1 = Map.of("workspace", "cite", "store", "named");
+        assertThrows(ToolException.class, () -> run(t, args1));
     }
 
     @Test

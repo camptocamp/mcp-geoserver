@@ -11,6 +11,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.geoserver.catalog.AttributeTypeInfo;
+import org.geoserver.catalog.CatalogFacade;
 import org.geoserver.catalog.FeatureTypeInfo;
 import org.geoserver.catalog.LayerInfo;
 import org.geoserver.config.GeoServerDataDirectory;
@@ -222,7 +223,7 @@ public class StyleTools {
     }
 
     StyleInfo find(WorkspaceInfo ws, String name) {
-        return ws == null ? catalog.getStyleByName((WorkspaceInfo) null, name) : catalog.getStyleByName(ws, name);
+        return catalog.getStyleByName(ws == null ? CatalogFacade.NO_WORKSPACE : ws, name);
     }
 
     StyleInfo newStyle(String name, WorkspaceInfo ws, StyleHandler handler) {
@@ -234,9 +235,8 @@ public class StyleTools {
     }
 
     static Version version(StyleHandler handler, String body) {
-        return SLDHandler.FORMAT.equals(handler.getFormat())
-                ? (SLD_11_ROOT.matcher(body).find() ? SLDHandler.VERSION_11 : SLDHandler.VERSION_10)
-                : handler.getVersions().get(0);
+        if (!SLDHandler.FORMAT.equals(handler.getFormat())) return handler.getVersions().get(0);
+        return SLD_11_ROOT.matcher(body).find() ? SLDHandler.VERSION_11 : SLDHandler.VERSION_10;
     }
 
     static List<String> unknownFunctions(String body) {

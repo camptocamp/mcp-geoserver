@@ -136,14 +136,14 @@ public class GwcTools {
         };
     }
 
-    static Document parseXml(byte[] body) throws Exception {
+    static Document parseXml(byte[] body) throws javax.xml.parsers.ParserConfigurationException, org.xml.sax.SAXException, java.io.IOException {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
         dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         return dbf.newDocumentBuilder().parse(new ByteArrayInputStream(body));
     }
 
-    static String toXml(Document doc) throws Exception {
+    static String toXml(Document doc) throws javax.xml.transform.TransformerException {
         StringWriter xml = new StringWriter();
         TransformerFactory tf = TransformerFactory.newInstance();
         tf.setAttribute(javax.xml.XMLConstants.ACCESS_EXTERNAL_DTD, "");

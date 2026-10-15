@@ -61,14 +61,18 @@ public class DataToolsTest extends McpToolTestSupport {
     @Test
     public void queryFeaturesBadCqlIsToolError() {
         var t = tool(tools("").tools(), "gs_query_features");
-        ToolException e = assertThrows(ToolException.class, () -> runRaw(t, ctx(), Map.of("layer", "cite:Lakes", "cql", "NAME ==== 1")));
+        Map<String, Object> args = Map.of("layer", "cite:Lakes", "cql", "NAME ==== 1");
+        var context = ctx();
+        ToolException e = assertThrows(ToolException.class, () -> runRaw(t, context, args));
         assertTrue(e.getMessage(), e.getMessage().startsWith("Invalid CQL"));
     }
 
     @Test
     public void queryFeaturesUnknownLayerIsToolError() {
         var t = tool(tools("").tools(), "gs_query_features");
-        ToolException e = assertThrows(ToolException.class, () -> runRaw(t, ctx(), Map.of("layer", "nothing")));
+        Map<String, Object> args = Map.of("layer", "nothing");
+        var context = ctx();
+        ToolException e = assertThrows(ToolException.class, () -> runRaw(t, context, args));
         assertEquals("Layer 'nothing' not found", e.getMessage());
     }
 
@@ -93,8 +97,10 @@ public class DataToolsTest extends McpToolTestSupport {
         String xml = "<ServiceExceptionReport><ServiceException>Could not find layer nope</ServiceException></ServiceExceptionReport>";
         try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "application/vnd.ogc.se_xml", xml))) {
             var t = tool(tools(stub.url()).tools(), "gs_get_map");
-            ToolException e = assertThrows(ToolException.class, () -> runRaw(t, ctx(), Map.of(
-                    "layers", List.of("nope"), "bbox", List.of(0, 0, 1, 1), "width", 10, "height", 10)));
+            Map<String, Object> args = Map.of(
+                    "layers", List.of("nope"), "bbox", List.of(0, 0, 1, 1), "width", 10, "height", 10);
+            var context = ctx();
+            ToolException e = assertThrows(ToolException.class, () -> runRaw(t, context, args));
             assertTrue(e.getMessage(), e.getMessage().contains("Could not find layer nope"));
         }
     }
@@ -144,6 +150,8 @@ public class DataToolsTest extends McpToolTestSupport {
     @Test
     public void checkLayerUnknownLayerIsToolError() {
         var t = tool(tools("").tools(), "gs_check_layer");
-        assertThrows(ToolException.class, () -> runRaw(t, ctx(), Map.of("name", "nothing")));
+        Map<String, Object> args = Map.of("name", "nothing");
+        var context = ctx();
+        assertThrows(ToolException.class, () -> runRaw(t, context, args));
     }
 }

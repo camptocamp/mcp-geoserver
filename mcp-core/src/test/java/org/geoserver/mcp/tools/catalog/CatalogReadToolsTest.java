@@ -95,7 +95,8 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
     @Test
     public void getLayerUnknownIsToolError() {
         var t = tool(new LayerTools(getCatalog()).tools(), "gs_get_layer");
-        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of("name", "nope:nothing")));
+        Map<String, Object> args = Map.of("name", "nope:nothing");
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
         assertEquals("Layer 'nope:nothing' not found", e.getMessage());
     }
 
@@ -212,7 +213,8 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
     @Test
     public void validateStyleNeedsBodyOrName() {
         var t = tool(new StyleTools(getCatalog()).tools(), "gs_validate_style");
-        assertThrows(ToolException.class, () -> run(t, Map.of("workspace", "cite")));
+        Map<String, Object> args = Map.of("workspace", "cite");
+        assertThrows(ToolException.class, () -> run(t, args));
     }
 
     List<String> names(JsonNode array) {

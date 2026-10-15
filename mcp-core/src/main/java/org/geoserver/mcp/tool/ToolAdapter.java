@@ -54,19 +54,19 @@ public final class ToolAdapter {
             if (verbose && !ctx.trace().lines().isEmpty()) {
                 String block = ctx.trace().render(ctx.requestBaseUrl());
                 content.add(McpSchema.TextContent.builder(block).build());
-                COMMANDS.info(tool.definition().name() + "\n" + block);
+                COMMANDS.info(() -> tool.definition().name() + "\n" + block);
             }
             return McpSchema.CallToolResult.builder().content(content).isError(false).build();
         } catch (ToolException e) {
             return error(e.getMessage());
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Tool " + tool.definition().name() + " failed", e);
+            LOG.log(Level.WARNING, e, () -> "Tool " + tool.definition().name() + " failed");
             String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             return error(tool.definition().name() + " failed: " + msg);
         }
     }
 
-    static McpSchema.Content toContent(Object payload, ObjectMapper json) throws Exception {
+    static McpSchema.Content toContent(Object payload, ObjectMapper json) throws com.fasterxml.jackson.core.JsonProcessingException {
         if (payload instanceof Payloads.RawJson raw) return McpSchema.TextContent.builder(raw.json()).build();
         if (payload instanceof Payloads.ImagePayload img) {
             return McpSchema.ImageContent.builder(Base64.getEncoder().encodeToString(img.bytes()), img.mimeType()).build();

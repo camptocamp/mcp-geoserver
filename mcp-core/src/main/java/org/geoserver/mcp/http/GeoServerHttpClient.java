@@ -17,6 +17,21 @@ public class GeoServerHttpClient {
         public String text() {
             return new String(body, StandardCharsets.UTF_8);
         }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Response other && status == other.status && java.util.Objects.equals(contentType, other.contentType) && java.util.Arrays.equals(body, other.body);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * java.util.Objects.hash(status, contentType) + java.util.Arrays.hashCode(body);
+        }
+
+        @Override
+        public String toString() {
+            return "Response[status=" + status + ", contentType=" + contentType + ", body=" + body.length + " bytes]";
+        }
     }
 
     private final GeoServer geoServer;

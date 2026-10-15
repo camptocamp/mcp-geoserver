@@ -1,4 +1,6 @@
-<html xmlns:wicket="http://wicket.apache.org">
+<!DOCTYPE html>
+<html xmlns:wicket="http://wicket.apache.org" lang="en">
+<head><title>MCP Server</title></head>
 <body>
 <wicket:extend>
   <form wicket:id="form">
@@ -6,31 +8,31 @@
       <legend><wicket:message key="McpAdminPage.legend">MCP Server</wicket:message></legend>
       <ul>
         <li>
-          <label><wicket:message key="McpAdminPage.endpoint">Endpoint</wicket:message></label>
+          <strong><wicket:message key="McpAdminPage.endpoint">Endpoint</wicket:message></strong>
           <span wicket:id="endpoint"></span>
         </li>
         <li>
-          <input type="checkbox" wicket:id="enabled"/>
-          <label><wicket:message key="McpAdminPage.enabled">Enabled</wicket:message></label>
+          <input type="checkbox" wicket:id="enabled" id="mcpEnabled"/>
+          <label for="mcpEnabled"><wicket:message key="McpAdminPage.enabled">Enabled</wicket:message></label>
         </li>
         <li>
-          <input type="checkbox" wicket:id="verbose"/>
-          <label><wicket:message key="McpAdminPage.verbose">Verbose: include equivalent curl commands in results</wicket:message></label>
+          <input type="checkbox" wicket:id="verbose" id="mcpVerbose"/>
+          <label for="mcpVerbose"><wicket:message key="McpAdminPage.verbose">Verbose: include equivalent curl commands in results</wicket:message></label>
         </li>
         <li>
-          <label><wicket:message key="McpAdminPage.allowedRoles">Allowed roles (comma separated)</wicket:message></label>
+          <label for="mcpNewRole"><wicket:message key="McpAdminPage.allowedRoles">Allowed roles (comma separated)</wicket:message></label>
           <ul>
             <li wicket:id="roles">
               <span wicket:id="role"></span>
               <button type="submit" wicket:id="remove" class="btn btn-sm" title="Remove">&#215;</button>
             </li>
           </ul>
-          <select wicket:id="newRole"></select>
+          <select wicket:id="newRole" id="mcpNewRole"></select>
           <button type="submit" wicket:id="addRole" class="btn btn-sm" title="Add role">+</button>
         </li>
         <li>
-          <label><wicket:message key="McpAdminPage.internalBaseUrl">Internal base URL for WMS and GWC calls (optional)</wicket:message></label>
-          <input type="text" wicket:id="internalBaseUrl" size="60"/>
+          <label for="mcpInternalBaseUrl"><wicket:message key="McpAdminPage.internalBaseUrl">Internal base URL for WMS and GWC calls (optional)</wicket:message></label>
+          <input type="text" wicket:id="internalBaseUrl" id="mcpInternalBaseUrl" size="60"/>
         </li>
       </ul>
     </fieldset>
