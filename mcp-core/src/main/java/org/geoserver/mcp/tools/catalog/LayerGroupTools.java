@@ -130,9 +130,6 @@ public class LayerGroupTools {
     }
 
     StyleInfo style(String name) {
-        if (name.isBlank()) return null;
-        StyleInfo s = catalog.getStyleByName(name);
-        if (s == null) throw new ToolException("Style '" + name + "' not found");
-        return s;
+        return name.isBlank() ? null : Lookups.style(catalog, null, name);
     }
 }

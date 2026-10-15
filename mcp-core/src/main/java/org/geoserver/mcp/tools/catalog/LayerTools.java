@@ -8,7 +8,6 @@ import org.geoserver.catalog.FeatureTypeInfo;
 import org.geoserver.catalog.ProjectionPolicy;
 import org.geoserver.catalog.ResourceInfo;
 import org.geoserver.catalog.StoreInfo;
-import org.geoserver.catalog.StyleInfo;
 import org.geoserver.catalog.WorkspaceInfo;
 import java.io.IOException;
 import org.geotools.api.feature.type.FeatureType;
@@ -341,16 +340,10 @@ public class LayerTools {
             layer.setEnabled(enabled);
         }
         if (args.has(Keys.ADVERTISED)) layer.setAdvertised(args.bool(Keys.ADVERTISED, true));
-        if (args.has(Keys.DEFAULT_STYLE)) layer.setDefaultStyle(findStyle(args.string(Keys.DEFAULT_STYLE)));
+        if (args.has(Keys.DEFAULT_STYLE)) layer.setDefaultStyle(Lookups.style(catalog, null, args.string(Keys.DEFAULT_STYLE)));
         if (args.has(Keys.STYLES)) {
             layer.getStyles().clear();
-            for (String s : args.strings(Keys.STYLES)) layer.getStyles().add(findStyle(s));
+            for (String s : args.strings(Keys.STYLES)) layer.getStyles().add(Lookups.style(catalog, null, s));
         }
-    }
-
-    StyleInfo findStyle(String name) {
-        StyleInfo s = catalog.getStyleByName(name);
-        if (s == null) throw new ToolException("Style '" + name + "' not found");
-        return s;
     }
 }
