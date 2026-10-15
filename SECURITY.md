@@ -21,4 +21,5 @@ Only the latest release receives security fixes.
 
 - Dependabot: weekly updates for Maven, GitHub Actions and the Docker base image, plus security alerts.
 - SonarQube (`sast.camptocamp.net`): static analysis and quality gate on every pull request.
-- Snyk: dependency monitoring of every tagged release.
+- Dependency review: pull requests adding a dependency with a known high or critical vulnerability fail.
+- Snyk: dependency test on every pull request and on `master` (high and critical fail), monitoring of every tagged release.

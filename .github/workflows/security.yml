@@ -1,0 +1,33 @@
+name: Security
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+
+  snyk:
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Secrets are absent on Dependabot and fork PRs.
+      - name: Snyk dependency test
+        if: env.SNYK_TOKEN != ''
+        uses: snyk/actions/maven-3-jdk-17@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+        with:
+          command: test
+          args: --maven-aggregate-project --severity-threshold=high
