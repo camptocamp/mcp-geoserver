@@ -1,4 +1,4 @@
-FROM geoservercloud/geoserver-cloud-rest:3.0.1
+FROM geoservercloud/geoserver-cloud-rest:3.0.1.1
 ARG LIBS=libs
 COPY ${LIBS}/*.jar /tmp/mcp-libs/
 RUN cd /opt/app/bin && for f in /tmp/mcp-libs/*.jar; do \
