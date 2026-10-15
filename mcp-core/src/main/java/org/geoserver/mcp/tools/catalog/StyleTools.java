@@ -11,7 +11,6 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.geoserver.catalog.AttributeTypeInfo;
-import org.geoserver.catalog.CatalogFacade;
 import org.geoserver.catalog.FeatureTypeInfo;
 import org.geoserver.catalog.LayerInfo;
 import org.geoserver.config.GeoServerDataDirectory;
@@ -223,7 +222,7 @@ public class StyleTools {
     }
 
     StyleInfo find(WorkspaceInfo ws, String name) {
-        return catalog.getStyleByName(ws == null ? CatalogFacade.NO_WORKSPACE : ws, name);
+        return catalog.getStyleByName(ws, name);
     }
 
     StyleInfo newStyle(String name, WorkspaceInfo ws, StyleHandler handler) {
