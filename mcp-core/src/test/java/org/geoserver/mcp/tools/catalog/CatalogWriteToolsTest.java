@@ -247,4 +247,56 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
         assertFalse(again.get("created").asBoolean());
         assertEquals(groups, getCatalog().getLayerGroups().size());
     }
+
+    @Test
+    public void updateLayerGroupAddsRemovesAndReplaces() throws Exception {
+        var tools = new LayerGroupTools(getCatalog()).tools();
+        run(tool(tools, "gs_create_layer_group"), Map.of("name", "edit", "workspace", "cite", "layers", List.of("cite:Lakes")));
+        var update = tool(tools, "gs_update_layer_group");
+
+        JsonNode g = run(update, Map.of("name", "edit", "workspace", "cite", "title", "Edited", "mode", "NAMED", "keywords", List.of("hydro", "base"),
+                "add", List.of("cite:BasicPolygons", "cite:Bridges"), "addStyles", List.of("polygon")));
+        assertEquals(List.of("hydro", "base"), getCatalog().getLayerGroupByName("cite", "edit").getKeywords().stream().map(k -> k.getValue()).toList());
+        assertTrue(g.get("updated").asBoolean());
+        assertEquals("Edited", g.get("title").asText());
+        assertEquals("NAMED", g.get("mode").asText());
+        assertEquals(3, g.get("layers").size());
+        assertEquals("cite:BasicPolygons", g.get("layers").get(1).get("name").asText());
+        assertEquals("polygon", g.get("layers").get(1).get("style").asText());
+
+        g = run(update, Map.of("name", "edit", "workspace", "cite", "remove", List.of("cite:Lakes")));
+        assertEquals(2, g.get("layers").size());
+        assertEquals("cite:BasicPolygons", g.get("layers").get(0).get("name").asText());
+        assertEquals("polygon", g.get("layers").get(0).get("style").asText());
+
+        g = run(update, Map.of("name", "edit", "workspace", "cite", "layers", List.of("cite:Lakes", "cite:Forests")));
+        assertEquals(2, g.get("layers").size());
+        assertEquals("cite:Forests", g.get("layers").get(1).get("name").asText());
+        assertEquals(2, getCatalog().getLayerGroupByName("cite", "edit").getLayers().size());
+    }
+
+    @Test
+    public void updateLayerGroupNestsGroups() throws Exception {
+        var tools = new LayerGroupTools(getCatalog()).tools();
+        run(tool(tools, "gs_create_layer_group"), Map.of("name", "inner", "workspace", "cite", "layers", List.of("cite:Lakes")));
+        run(tool(tools, "gs_create_layer_group"), Map.of("name", "outer", "workspace", "cite", "layers", List.of("cite:Forests")));
+        JsonNode g = run(tool(tools, "gs_update_layer_group"), Map.of("name", "outer", "workspace", "cite", "add", List.of("cite:inner")));
+        assertEquals("cite:inner", g.get("layers").get(1).get("name").asText());
+    }
+
+    @Test
+    public void updateLayerGroupRejectsBadEdits() throws Exception {
+        var tools = new LayerGroupTools(getCatalog()).tools();
+        run(tool(tools, "gs_create_layer_group"), Map.of("name", "strict", "workspace", "cite", "layers", List.of("cite:Lakes")));
+        var update = tool(tools, "gs_update_layer_group");
+        Map<String, Object> notMember = Map.of("name", "strict", "workspace", "cite", "remove", List.of("cite:Forests"));
+        assertTrue(assertThrows(ToolException.class, () -> run(update, notMember)).getMessage().contains("is not in layer group"));
+        Map<String, Object> both = Map.of("name", "strict", "workspace", "cite", "layers", List.of("cite:Lakes"), "add", List.of("cite:Forests"));
+        assertThrows(ToolException.class, () -> run(update, both));
+        Map<String, Object> empty = Map.of("name", "strict", "workspace", "cite", "remove", List.of("cite:Lakes"));
+        assertTrue(assertThrows(ToolException.class, () -> run(update, empty)).getMessage().contains("gs_delete"));
+        Map<String, Object> unknown = Map.of("name", "strict", "workspace", "cite", "add", List.of("cite:nothing"));
+        assertEquals("Layer or layer group 'cite:nothing' not found", assertThrows(ToolException.class, () -> run(update, unknown)).getMessage());
+        assertEquals(1, getCatalog().getLayerGroupByName("cite", "strict").getLayers().size());
+    }
 }

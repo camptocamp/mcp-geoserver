@@ -26,7 +26,7 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
 | Target | State |
 | --- | --- |
-| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 34 tools (35 since `gs_set_time_dimension`), anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
+| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists every tool, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
 | GeoServer Cloud 3.0.1 | Works. Verified with the upstream `v3.0.1` compose (datadir catalog) and the derived `geoserver-cloud-rest:3.0.1.1` image from `docker/cloud`: settings via `/rest/mcp/settings` persist across a restconfig restart, `/mcp` through the gateway lists 34 tools (verified before `gs_set_time_dimension` was added), anonymous gets 403, disabled gives 503, `docker/cloud/smoke.sh` passes. Exercised `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store` (local GeoTIFF and a public `https://` COG), `gs_publish_layer`, `gs_get_map` and `gs_check_layer` through `internalBaseUrl` on the wms service, `gs_query_features`, `gs_gwc_list_gridsets` on the gwc service, `gs_delete`. |
 
 ## Install
@@ -106,7 +106,8 @@ Discovery
 
 Write
 - `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_publish_layers` (bulk, up to 50), `gs_create_sql_view`, `gs_update_layer`, `gs_set_time_dimension` (vector attribute or ImageMosaic time, presentation, default value)
-- `gs_put_style`, `gs_create_layer_group`
+- `gs_put_style`, `gs_generate_style` (categorized, equal interval, quantile or Jenks classes computed from the layer's data, colour ramps, optional default style)
+- `gs_create_layer_group`, `gs_update_layer_group` (title, abstract, keywords, mode, add or remove members including nested groups, or replace the list)
 - `gs_delete`, `gs_reload`
 
 Data

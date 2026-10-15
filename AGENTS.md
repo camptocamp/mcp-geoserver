@@ -77,6 +77,8 @@ Write
 - `gs_set_time_dimension(name, enabled?, attribute?, endAttribute?, presentation?, resolution?, defaultValue?, referenceValue?, nearestMatch?)`: vector layers need `attribute`; DISCRETE_INTERVAL needs `resolution` in ms
 - `gs_put_style(name, workspace?, body, format?)`: format `sld` by default, `css`, `ysld`, `mbstyle` with their extension
 - `gs_create_layer_group(name, workspace?, title?, layers[], styles[]?, mode?)`
+- `gs_update_layer_group(name, workspace?, title?, abstract?, mode?, keywords[]?, add[]?, addStyles[]?, remove[]?, layers[]?, styles[]?)`: members may be layers or groups; `layers` replaces the list and excludes add/remove; a group cannot become empty
+- `gs_generate_style(layer, attribute, method, classes?, ramp?, name?, workspace?, setDefault?)`: method categorized (up to 50 values) or equalInterval, quantile, jenks (numeric, 2 to 20 classes); stored through gs_put_style; returns rules and the SLD
 - `gs_delete(kind, workspace?, name, recurse?)`
 - `gs_reload()`
 
