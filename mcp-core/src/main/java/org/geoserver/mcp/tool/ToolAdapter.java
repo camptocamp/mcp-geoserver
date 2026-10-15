@@ -44,8 +44,8 @@ public final class ToolAdapter {
             McpTransportContext tctx, McpSchema.CallToolRequest req) {
         Args args = new Args(req.arguments());
         boolean verbose = args.has("verbose") ? args.bool("verbose", false) : settings.load().verbose();
-        String auth = (String) tctx.get(ToolContext.AUTHORIZATION);
-        String base = (String) tctx.get(ToolContext.REQUEST_BASE_URL);
+        String auth = (String) tctx.get(ToolContext.AUTHORIZATION_KEY);
+        String base = (String) tctx.get(ToolContext.REQUEST_BASE_URL_KEY);
         ToolContext ctx = new ToolContext(verbose, new CommandTrace(), auth, base == null ? "" : base);
         try {
             Object payload = tool.call(ctx, args);

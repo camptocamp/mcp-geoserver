@@ -48,7 +48,7 @@ class ToolAdapterTest {
     McpSchema.CallToolResult call(GsTool tool, boolean verboseSetting, Map<String, Object> args) {
         McpStatelessServerFeatures.SyncToolSpecification spec = ToolAdapter.spec(tool, settings(verboseSetting), json);
         McpTransportContext ctx = McpTransportContext.create(Map.of(
-                ToolContext.AUTHORIZATION, "Basic abc", ToolContext.REQUEST_BASE_URL, "http://localhost:8080/geoserver"));
+                ToolContext.AUTHORIZATION_KEY, "Basic abc", ToolContext.REQUEST_BASE_URL_KEY, "http://localhost:8080/geoserver"));
         return spec.callHandler().apply(ctx, McpSchema.CallToolRequest.builder("x").arguments(args).build());
     }
 
