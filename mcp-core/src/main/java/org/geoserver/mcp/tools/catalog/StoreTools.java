@@ -165,7 +165,7 @@ public class StoreTools {
                         .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
                         .string("name", "Store name", true)
                         .string("type", "Store type name from gs_list_store_types, e.g. Shapefile, PostGIS, GeoTIFF, GeoPackage", true)
-                        .map("params", "Connection parameters. Vector: keys from gs_list_store_types. Raster: {\"url\": ...}", true).build())
+                        .map("params", "Connection parameters. Vector: keys from gs_list_store_types. Raster: {\"url\": ...}; a GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true).build())
                         .description("Create a vector or raster store. Type is matched at runtime against installed GeoTools plugins, so community formats work when installed.").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -247,8 +247,17 @@ public class StoreTools {
         CoverageStoreInfo cs = builder.buildCoverageStore(name);
         cs.setType(format.getName());
         cs.setURL(String.valueOf(url));
+        Map<String, Object> body = new LinkedHashMap<>(Map.of("name", name, "type", cs.getType(), Keys.WORKSPACE, ws.getName()));
+        if (RemoteCog.applies(cs.getType(), cs.getURL())) {
+            RemoteCog.Reader reader = RemoteCog.reader(cs.getURL());
+            RemoteCog.requireInstalled(reader, StoreTools.class.getClassLoader());
+            cs.setURL(RemoteCog.storeUrl(cs.getURL()));
+            RemoteCog.configure(cs, reader);
+            body.put("metadata", Map.of("entry", Map.of("@key", "CogSettings.Key", "cogSettingsStore", Map.of("rangeReaderSettings", reader.type()))));
+        }
+        body.put("url", cs.getURL());
         ctx.trace().curl("POST", Keys.REST_WORKSPACES + ws.getName() + "/coveragestores", Keys.APPLICATION_JSON,
-                "{\"coverageStore\":{\"name\":\"" + name + "\",\"type\":\"" + cs.getType() + "\",\"url\":\"" + url + "\",\"workspace\":\"" + ws.getName() + "\"}}");
+                Views.json(Map.of("coverageStore", body)));
         catalog.add(cs);
         Map<String, Object> m = Views.store(cs);
         m.put(Keys.CREATED, true);
