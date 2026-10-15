@@ -92,6 +92,17 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
     }
 
     @Test
+    public void s3GeoTiffWithoutCogModuleIsErrorAndCreatesNothing() throws Exception {
+        run(tool(new WorkspaceTools(getCatalog()).tools(), "gs_create_workspace"), Map.of("name", "cogws"));
+        var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
+        Map<String, Object> args = Map.of(
+                "workspace", "cogws", "name", "dem", "type", "GeoTIFF", "params", Map.of("url", "s3://bucket/dem.tif"));
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
+        assertTrue(e.getMessage(), e.getMessage().contains("cog-s3"));
+        assertNull(getCatalog().getCoverageStoreByName("cogws", "dem"));
+    }
+
+    @Test
     public void unknownStoreTypeIsError() throws Exception {
         run(tool(new WorkspaceTools(getCatalog()).tools(), "gs_create_workspace"), Map.of("name", "bad"));
         var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
