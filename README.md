@@ -3,6 +3,8 @@
 [![Latest release](https://img.shields.io/github/v/release/camptocamp/mcp-geoserver?color=brightgreen&label=release)](https://github.com/camptocamp/mcp-geoserver/releases/latest)
 [![License: GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 [![Tests](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sast.camptocamp.net/api/project_badges/measure?project=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b&metric=alert_status&token=sqb_a32cf7a16c1d4d9c8db4bd704579c8d2414a80b8)](https://sast.camptocamp.net/dashboard?id=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b)
+[![Coverage](https://sast.camptocamp.net/api/project_badges/measure?project=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b&metric=coverage&token=sqb_a32cf7a16c1d4d9c8db4bd704579c8d2414a80b8)](https://sast.camptocamp.net/dashboard?id=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b)
 [![Security policy](https://img.shields.io/badge/security-policy-informational)](SECURITY.md)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](.github/dependabot.yml)
 
