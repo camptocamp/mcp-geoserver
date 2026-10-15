@@ -38,6 +38,32 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
 The zip targets vanilla GeoServer. For GeoServer Cloud, see `docker/cloud/README.md`.
 
+## Connect to an existing GeoServer
+
+The extension runs inside GeoServer, so there is no separate server to host and no token to mint: authentication is GeoServer's own, and the `Authorization` header you give the client is the login it runs as. Point the client at `<geoserver>/mcp` over HTTPS.
+
+1. Install the extension (above) and confirm it under About & Status, Modules.
+
+2. Enable it (it ships disabled), as an administrator:
+
+   ```bash
+   curl -u <user>:<pass> -X PUT -H 'Content-Type: application/json' \
+     -d '{"enabled":true}' https://<host>/geoserver/rest/mcp/settings
+   ```
+
+3. Add it to your MCP client with your GeoServer credentials as a Basic header:
+
+   ```bash
+   claude mcp add --transport http geoserver https://<host>/geoserver/mcp \
+     --header "Authorization: Basic $(printf '<user>:<pass>' | base64)"
+   ```
+
+Notes:
+
+- The account you authenticate as decides what the tools can see and change: everything runs through GeoServer's secured catalog. `allowedRoles` (default `ROLE_ADMINISTRATOR`) gates who may reach `/mcp` at all; others get 403.
+- Basic auth is base64, not encryption, so serve `/mcp` over TLS. To use an API key or bearer token instead of a password, front `/mcp` with the matching GeoServer authentication filter chain and send that header; the extension adds no token mechanism of its own.
+- Behind a reverse proxy, set `internalBaseUrl` to GeoServer's own URL (same `PUT /rest/mcp/settings`) so `gs_get_map` and the `gs_gwc_*` tools resolve a trusted address. The request-derived fallback is accepted only for loopback, which blocks Host-header SSRF and credential forwarding to an untrusted host.
+
 ## Quick start (vanilla GeoServer 3.0.1 in Docker)
 
 1. Build the plugin. This also copies the jars into `docker/vanilla/additional_libs/`.
