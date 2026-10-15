@@ -40,7 +40,7 @@ Tests extending `GeoServerSystemTestSupport` are JUnit 4 (`org.junit.Test`). Eve
 
 CI fails when the SonarQube quality gate fails on new code. Write code that passes it:
 
-- A string literal of 5+ characters used 3 or more times in one file goes in `org.geoserver.mcp.tool.Keys` as a constant (JSON keys, argument names, REST path prefixes, repeated descriptions). Reuse an existing constant before adding one.
+- A string literal of 5+ characters repeated 3 or more times becomes a constant. Shared across files: `org.geoserver.mcp.tool.Keys` (JSON keys, argument names, REST path prefixes, repeated descriptions). Repeated only inside one file: a `private static final` in that file. Reuse an existing `Keys` constant before adding one or writing the literal again.
 - Cognitive complexity stays at 15 or below per method. When a tool's `call` grows, extract helpers on the tool group class (validation, building, tracing) rather than nesting more branches.
 - XML parsers and transformers disable external entities: `FEATURE_SECURE_PROCESSING` and `disallow-doctype-decl` on `DocumentBuilderFactory`, empty `ACCESS_EXTERNAL_DTD` and `ACCESS_EXTERNAL_STYLESHEET` on `TransformerFactory`. Reuse `org.geoserver.mcp.tool.SafeXml.parse` and `SafeXml.write`.
 - A constant must not differ from a field or record component only by case (e.g. `AUTHORIZATION` next to `authorization`); suffix context-map keys with `_KEY`.

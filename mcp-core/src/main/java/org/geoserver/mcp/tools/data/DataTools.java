@@ -120,23 +120,23 @@ public class DataTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_get_map", Schema.object()
-                        .stringArray("layers", "Layer or layer group names", true)
+                        .stringArray(Keys.LAYERS, "Layer or layer group names", true)
                         .numberArray("bbox", "minx, miny, maxx, maxy", true)
                         .integer(Keys.WIDTH, "Image width in pixels", true)
                         .integer(Keys.HEIGHT, "Image height in pixels", true)
                         .string("srs", "CRS of the bbox, default EPSG:4326", false)
-                        .stringArray("styles", "Style per layer; empty string for default", false)
-                        .string("format", "Image MIME type, default image/png", false)
+                        .stringArray(Keys.STYLES, "Style per layer; empty string for default", false)
+                        .string(Keys.FORMAT, "Image MIME type, default image/png", false)
                         .bool("transparent", "Transparent background", false).build())
                         .description("Render a WMS GetMap and return the image so you can look at it").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 List<Double> bbox = args.numbers("bbox");
                 if (bbox.size() != 4) throw new ToolException(BAD_BBOX);
-                String layers = String.join(",", args.strings("layers"));
+                String layers = String.join(",", args.strings(Keys.LAYERS));
                 if (layers.isBlank()) throw new ToolException("At least one layer is required");
-                String styles = String.join(",", args.strings("styles"));
-                String format = args.string("format", "image/png");
+                String styles = String.join(",", args.strings(Keys.STYLES));
+                String format = args.string(Keys.FORMAT, "image/png");
                 String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
                         + "&LAYERS=" + enc(layers) + "&STYLES=" + enc(styles)
                         + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))

@@ -31,7 +31,7 @@ public final class ToolAdapter {
     static McpSchema.Tool withVerbose(McpSchema.Tool tool) {
         Map<String, Object> schema = new LinkedHashMap<>(tool.inputSchema());
         Map<String, Object> props = new LinkedHashMap<>((Map<String, Object>) schema.getOrDefault("properties", Map.of()));
-        props.put(Keys.VERBOSE, Map.of("type", "boolean", "description", "Include the equivalent curl commands in the result"));
+        props.put(Keys.VERBOSE, Map.of("type", "boolean", Keys.DESCRIPTION, "Include the equivalent curl commands in the result"));
         schema.put("properties", props);
         return McpSchema.Tool.builder(tool.name(), schema)
                 .title(tool.title())

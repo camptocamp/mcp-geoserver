@@ -70,7 +70,7 @@ public class LayerGroupTools {
             public Object call(ToolContext ctx, Args args) {
                 String ws = args.string(Keys.WORKSPACE, null);
                 LayerGroupInfo g = Lookups.layerGroup(catalog, ws, args.string("name"));
-                ctx.trace().curl("GET", groupPath(ws, g.getName()) + ".json", null, null);
+                ctx.trace().curl("GET", groupPath(ws, g.getName()) + Keys.JSON_EXT, null, null);
                 return Views.layerGroup(g);
             }
         };
@@ -84,7 +84,7 @@ public class LayerGroupTools {
                         .string(Keys.WORKSPACE, "Workspace; omit for global", false)
                         .string(Keys.TITLE, "Title", false)
                         .stringArray(Keys.LAYERS, "Ordered layer names, bottom first", true)
-                        .stringArray("styles", "Parallel style names; empty string means the layer's default", false)
+                        .stringArray(Keys.STYLES, "Parallel style names; empty string means the layer's default", false)
                         .enumeration("mode", "Group mode", false, "SINGLE", "NAMED", "CONTAINER", "EO", "OPAQUE_CONTAINER").build())
                         .description("Create a layer group and compute its bounds").build();
             }
@@ -95,12 +95,12 @@ public class LayerGroupTools {
                 LayerGroupInfo existing = find(ws, name);
                 if (existing != null) {
                     Map<String, Object> m = Views.layerGroup(existing);
-                    m.put("created", false);
+                    m.put(Keys.CREATED, false);
                     return m;
                 }
                 List<String> layers = args.strings(Keys.LAYERS);
                 if (layers.isEmpty()) throw new ToolException("At least one layer is required");
-                List<String> styles = args.strings("styles");
+                List<String> styles = args.strings(Keys.STYLES);
                 LayerGroupInfo g = catalog.getFactory().createLayerGroup();
                 g.setName(name);
                 g.setWorkspace(ws);
@@ -109,10 +109,10 @@ public class LayerGroupTools {
                 addMembers(g, layers, styles);
                 new CatalogBuilder(catalog).calculateLayerGroupBounds(g);
                 ctx.trace().curl("POST", ws == null ? "/rest/layergroups" : Keys.REST_WORKSPACES + ws.getName() + "/layergroups",
-                        "application/json", Views.json(Map.of("layerGroup", Map.of("name", name, Keys.LAYERS, Map.of("layer", layers)))));
+                        Keys.APPLICATION_JSON, Views.json(Map.of("layerGroup", Map.of("name", name, Keys.LAYERS, Map.of(Keys.LAYER, layers)))));
                 catalog.add(g);
                 Map<String, Object> m = Views.layerGroup(find(ws, name));
-                m.put("created", true);
+                m.put(Keys.CREATED, true);
                 return m;
             }
         };

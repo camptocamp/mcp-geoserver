@@ -135,7 +135,7 @@ public class GwcTools {
         if (args.has(Keys.ENABLED)) child(root, Keys.ENABLED).setTextContent(String.valueOf(args.bool(Keys.ENABLED, true)));
         if (args.has(Keys.FORMATS)) {
             Element f = replaceChild(doc, root, Keys.MIME_FORMATS);
-            for (String m : args.strings(Keys.FORMATS)) f.appendChild(doc.createElement("string")).setTextContent(m);
+            for (String m : args.strings(Keys.FORMATS)) f.appendChild(doc.createElement(Keys.STRING)).setTextContent(m);
         }
         if (args.has(Keys.GRIDSETS)) {
             Element g = replaceChild(doc, root, Keys.GRID_SUBSETS);
@@ -151,7 +151,7 @@ public class GwcTools {
         view.put("name", root.getElementsByTagName("name").item(0).getTextContent());
         view.put(Keys.ENABLED, Boolean.parseBoolean(child(root, Keys.ENABLED).getTextContent()));
         ArrayNode formats = view.putArray(Keys.MIME_FORMATS);
-        NodeList strings = child(root, Keys.MIME_FORMATS).getElementsByTagName("string");
+        NodeList strings = child(root, Keys.MIME_FORMATS).getElementsByTagName(Keys.STRING);
         for (int i = 0; i < strings.getLength(); i++) formats.add(strings.item(i).getTextContent());
         ArrayNode subsets = view.putArray(Keys.GRID_SUBSETS);
         NodeList names = child(root, Keys.GRID_SUBSETS).getElementsByTagName(Keys.GRID_SET_NAME);
@@ -217,7 +217,7 @@ public class GwcTools {
                 }
                 ObjectNode wrapper = json.createObjectNode();
                 wrapper.set("seedRequest", req);
-                expectOk(http.send(ctx, "POST", Keys.GWC_SEED_PATH + layer + Keys.JSON_EXT, "application/json", json.writeValueAsBytes(wrapper)), "Seed request");
+                expectOk(http.send(ctx, "POST", Keys.GWC_SEED_PATH + layer + Keys.JSON_EXT, Keys.APPLICATION_JSON, json.writeValueAsBytes(wrapper)), "Seed request");
                 return Map.of("submitted", true, Keys.LAYER, layer, Keys.OPERATION, req.get("type").asText());
             }
         };

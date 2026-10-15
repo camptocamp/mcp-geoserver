@@ -13,6 +13,7 @@ import org.geoserver.mcp.settings.McpSettingsStore;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.geoserver.mcp.tool.Keys;
 
 @RestController
 public class McpSettingsController {
@@ -45,8 +46,8 @@ public class McpSettingsController {
         }
         JsonNode body = json.readTree(req.getInputStream());
         McpSettings current = settings.load();
-        boolean enabled = body.path("enabled").asBoolean(current.enabled());
-        boolean verbose = body.path("verbose").asBoolean(current.verbose());
+        boolean enabled = body.path(Keys.ENABLED).asBoolean(current.enabled());
+        boolean verbose = body.path(Keys.VERBOSE).asBoolean(current.verbose());
         String base = body.path("internalBaseUrl").asText(current.internalBaseUrl());
         List<String> roles = current.allowedRoles();
         if (body.path("allowedRoles").isArray()) {
@@ -60,7 +61,7 @@ public class McpSettingsController {
 
     private void write(HttpServletResponse resp, McpSettings s) throws IOException {
         resp.setStatus(HttpServletResponse.SC_OK);
-        resp.setContentType("application/json");
+        resp.setContentType(Keys.APPLICATION_JSON);
         resp.setCharacterEncoding("UTF-8");
         resp.getWriter().write(json.writeValueAsString(s));
         resp.getWriter().flush();

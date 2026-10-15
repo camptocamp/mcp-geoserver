@@ -113,11 +113,11 @@ public class DiscoveryTools {
                 for (ModuleStatus s : GeoServerExtensions.extensions(ModuleStatus.class)) {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("name", s.getModule());
-                    m.put("title", s.getName());
+                    m.put(Keys.TITLE, s.getName());
                     m.put("version", s.getVersion().orElse(null));
                     m.put("category", String.valueOf(s.getCategory()));
                     m.put("available", s.isAvailable());
-                    m.put("enabled", s.isEnabled());
+                    m.put(Keys.ENABLED, s.isEnabled());
                     m.put("message", s.getMessage().orElse(null));
                     out.add(m);
                 }

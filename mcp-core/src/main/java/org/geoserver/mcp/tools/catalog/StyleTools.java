@@ -81,7 +81,7 @@ public class StyleTools {
                 }
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (StyleInfo s : styles) out.add(Views.style(s));
-                return Map.of("styles", out);
+                return Map.of(Keys.STYLES, out);
             }
         };
     }
@@ -136,7 +136,7 @@ public class StyleTools {
                 if (created) catalog.add(style);
                 else catalog.save(style);
                 Map<String, Object> m = Views.style(find(ws, name));
-                m.put("created", created);
+                m.put(Keys.CREATED, created);
                 return m;
             }
         };

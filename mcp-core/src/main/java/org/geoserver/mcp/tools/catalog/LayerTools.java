@@ -57,7 +57,7 @@ public class LayerTools {
                     String lws = l.getResource().getStore().getWorkspace().getName();
                     if (ws == null || ws.equals(lws)) out.add(Views.layerSummary(l));
                 }
-                return Map.of("layers", out);
+                return Map.of(Keys.LAYERS, out);
             }
         };
     }

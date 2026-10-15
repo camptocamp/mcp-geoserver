@@ -75,7 +75,7 @@ public class StoreTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_get_store", Schema.object()
-                        .string(Keys.WORKSPACE, "Workspace name", true)
+                        .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
                         .string("name", "Store name", true)
                         .stringArray("names", "Vector stores: describe these feature types (geometry columns, types, SRIDs)", false)
                         .bool("detail", "Vector stores: describe every published and available feature type; at most " + LayerTools.MAX_BULK, false).build())
@@ -84,8 +84,8 @@ public class StoreTools {
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 StoreInfo s = Lookups.store(catalog, args.string(Keys.WORKSPACE), args.string("name"));
-                String kind = Views.storeKind(s).equals("raster") ? "coveragestores" : "datastores";
-                ctx.trace().curl("GET", Keys.REST_WORKSPACES + s.getWorkspace().getName() + "/" + kind + "/" + s.getName() + ".json", null, null);
+                String kind = Views.storeKind(s).equals(Keys.RASTER) ? "coveragestores" : "datastores";
+                ctx.trace().curl("GET", Keys.REST_WORKSPACES + s.getWorkspace().getName() + "/" + kind + "/" + s.getName() + Keys.JSON_EXT, null, null);
                 Map<String, Object> m = Views.store(s);
                 List<String> resources = new ArrayList<>();
                 for (ResourceInfo r : catalog.getResourcesByStore(s, ResourceInfo.class)) resources.add(r.getName());
@@ -160,7 +160,7 @@ public class StoreTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_create_store", Schema.object()
-                        .string(Keys.WORKSPACE, "Workspace name", true)
+                        .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
                         .string("name", "Store name", true)
                         .string("type", "Store type name from gs_list_store_types, e.g. Shapefile, PostGIS, GeoTIFF, GeoPackage", true)
                         .map("params", "Connection parameters. Vector: keys from gs_list_store_types. Raster: {\"url\": ...}", true).build())
