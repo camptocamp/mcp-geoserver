@@ -59,6 +59,7 @@ Write
 - `gs_create_store(workspace, name, type, params)`: JDBC stores must answer `select 1` or nothing is saved; PostGIS stores also return privilege `warnings`
 - `gs_publish_layer(workspace, store, nativeName?, name?, title?, srs?)`: compact summary, gs_get_layer has attributes
 - `gs_publish_layers(workspace, store, names[] | all, includeNonSpatial?)`: up to 50 per call, per-item result with warnings or error, geometryless skipped
+- `gs_create_sql_view(workspace, store, name, sql, geometry, geometryType, srid, keyColumn?)`: SQL view on a JDBC store, published as a layer
 - `gs_update_layer(name, title?, abstract?, defaultStyle?, styles[]?, enabled?, advertised?)`
 - `gs_put_style(name, workspace?, body, format?)`: format `sld` by default, `css`, `ysld`, `mbstyle` with their extension
 - `gs_create_layer_group(name, workspace?, title?, layers[], styles[]?, mode?)`

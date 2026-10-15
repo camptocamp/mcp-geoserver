@@ -15,6 +15,9 @@ import org.geotools.api.feature.type.FeatureType;
 import org.geotools.api.feature.type.GeometryDescriptor;
 import org.geotools.api.feature.type.PropertyDescriptor;
 import org.geotools.feature.NameImpl;
+import org.geotools.geometry.jts.Geometries;
+import org.geotools.jdbc.JDBCDataStore;
+import org.geotools.jdbc.VirtualTable;
 import org.geoserver.mcp.tool.ToolException;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
@@ -35,7 +38,7 @@ public class LayerTools {
     }
 
     public List<GsTool> tools() {
-        return List.of(list(), get(), publish(), publishMany(), update());
+        return List.of(list(), get(), publish(), publishMany(), createSqlView(), update());
     }
 
     GsTool list() {
@@ -88,7 +91,7 @@ public class LayerTools {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string("workspace"));
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string("store"));
                 if (store instanceof DataStoreInfo ds) {
-                    return publishVector(ctx, ds, args.string("nativeName"), args.string("name", null), args.string("title", null), args.string("srs", null), true);
+                    return publishVector(ctx, ds, args.string("nativeName"), args.string("name", null), args.string("title", null), args.string("srs", null), true, null);
                 }
                 if (!(store instanceof CoverageStoreInfo)) {
                     throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
@@ -145,7 +148,7 @@ public class LayerTools {
                     long start = System.nanoTime();
                     Map<String, Object> item;
                     try {
-                        item = publishVector(ctx, ds, name, null, null, null, nonSpatial);
+                        item = publishVector(ctx, ds, name, null, null, null, nonSpatial, null);
                         if (Boolean.TRUE.equals(item.get("created"))) published++;
                     } catch (Skipped e) {
                         item = new java.util.LinkedHashMap<>(Map.of("name", name, "skipped", true, "warnings", List.of(e.getMessage())));
@@ -168,13 +171,53 @@ public class LayerTools {
         };
     }
 
+    GsTool createSqlView() {
+        return new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_create_sql_view", Schema.object()
+                        .string("workspace", "Workspace name", true)
+                        .string("store", "JDBC store name (PostGIS and the like)", true)
+                        .string("name", "View and layer name", true)
+                        .string("sql", "SELECT statement; pick one geometry column here to fix multi-geometry tables", true)
+                        .string("geometry", "Geometry column name in the SELECT", true)
+                        .string("geometryType", "Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon or Geometry", true)
+                        .integer("srid", "EPSG code of the geometry column", true)
+                        .string("keyColumn", "Column used as feature id; omit for generated ids", false).build())
+                        .description("Create a SQL view on a JDBC store and publish it as a layer").build();
+            }
+            public Object call(ToolContext ctx, Args args) throws Exception {
+                WorkspaceInfo ws = Lookups.workspace(catalog, args.string("workspace"));
+                StoreInfo store = Lookups.store(catalog, ws.getName(), args.string("store"));
+                String name = args.string("name");
+                Geometries type = Geometries.getForName(args.string("geometryType"));
+                if (type == null) throw new ToolException("Unknown geometryType '" + args.string("geometryType") + "'");
+                if (!(store instanceof DataStoreInfo ds) || !(catalog.getResourcePool().getDataStore(ds) instanceof JDBCDataStore jdbc)) {
+                    throw new ToolException("Store '" + store.getName() + "' is not a JDBC store");
+                }
+                VirtualTable view = new VirtualTable(name, args.string("sql"));
+                view.addGeometryMetadatata(args.string("geometry"), type.getBinding(), args.integer("srid", 0));
+                if (args.has("keyColumn")) view.setPrimaryKeyColumns(List.of(args.string("keyColumn")));
+                ctx.trace().curl("POST", "/rest/workspaces/" + ws.getName() + "/datastores/" + ds.getName() + "/featuretypes", "application/json",
+                        Views.json(Map.of("featureType", Map.of("name", name, "nativeName", name, "metadata", Map.of("entry", Map.of("@key", "JDBC_VIRTUAL_TABLE",
+                                "virtualTable", Map.of("name", name, "sql", args.string("sql"), "geometry", Map.of("name", args.string("geometry"), "type", type.getName(), "srid", args.integer("srid", 0)))))))));
+                jdbc.createVirtualTable(view);
+                try {
+                    return publishVector(ctx, ds, name, null, null, null, true, view);
+                } catch (Exception e) {
+                    jdbc.dropVirtualTable(name);
+                    throw e;
+                }
+            }
+        };
+    }
+
     static class Skipped extends ToolException {
         Skipped(String message) {
             super(message);
         }
     }
 
-    Map<String, Object> publishVector(ToolContext ctx, DataStoreInfo store, String nativeName, String name, String title, String srs, boolean includeNonSpatial) throws Exception {
+    Map<String, Object> publishVector(ToolContext ctx, DataStoreInfo store, String nativeName, String name, String title, String srs, boolean includeNonSpatial, VirtualTable view) throws Exception {
         WorkspaceInfo ws = store.getWorkspace();
         String layerName = name == null ? nativeName : name;
         LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + layerName);
@@ -206,6 +249,7 @@ public class LayerTools {
                         + "' and bounds may mix them; publish a SQL view to pick one");
             }
             ft = builder.buildFeatureType(new NameImpl(nativeName));
+            if (view != null) ft.getMetadata().put(FeatureTypeInfo.JDBC_VIRTUAL_TABLE, view);
             if (name != null) ft.setName(name);
             if (title != null) ft.setTitle(title);
             if (srs != null) {

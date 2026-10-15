@@ -29,7 +29,7 @@ public class ToolRegistryTest extends McpToolTestSupport {
             assertTrue(t.definition().name(), names.add(t.definition().name()));
             assertTrue(t.definition().name(), t.definition().description() != null && !t.definition().description().isBlank());
         }
-        assertEquals(33, all.size());
+        assertEquals(34, all.size());
     }
 
     @Test

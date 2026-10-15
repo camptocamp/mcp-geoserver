@@ -166,4 +166,16 @@ public class BulkPublishToolsTest extends McpToolTestSupport {
         assertEquals(resources, getCatalog().getResourcesByStore(store, ResourceInfo.class).size());
         assertTrue(String.join(" ", texts(second.get("warnings"))).contains("Renamed"));
     }
+
+    @Test
+    public void createSqlViewRejectsUnknownGeometryTypeAndNonJdbcStore() {
+        var t = tool(new LayerTools(getCatalog()).tools(), "gs_create_sql_view");
+        Map<String, Object> base = Map.of("workspace", "cite", "store", "named", "name", "v", "sql", "select 1", "geometry", "g", "srid", 4326);
+        Map<String, Object> badType = new LinkedHashMap<>(base);
+        badType.put("geometryType", "Blob");
+        assertTrue(assertThrows(ToolException.class, () -> run(t, badType)).getMessage().contains("geometryType"));
+        Map<String, Object> notJdbc = new LinkedHashMap<>(base);
+        notJdbc.put("geometryType", "Point");
+        assertTrue(assertThrows(ToolException.class, () -> run(t, notJdbc)).getMessage().contains("not a JDBC store"));
+    }
 }

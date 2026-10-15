@@ -10,7 +10,7 @@ public final class ToolHints {
             "gs_get_layer_group", "gs_list_store_types", "gs_list_modules", "gs_query_features", "gs_get_map",
             "gs_gwc_list_tile_layers", "gs_gwc_get_tile_layer", "gs_gwc_list_gridsets", "gs_gwc_list_tasks");
     private static final Set<String> ADDITIVE = Set.of(
-            "gs_create_workspace", "gs_create_store", "gs_publish_layer", "gs_publish_layers", "gs_update_layer",
+            "gs_create_workspace", "gs_create_store", "gs_publish_layer", "gs_publish_layers", "gs_create_sql_view", "gs_update_layer",
             "gs_create_layer_group", "gs_reload");
     private static final Set<String> DESTRUCTIVE = Set.of("gs_delete", "gs_put_style", "gs_gwc_seed", "gs_gwc_kill_tasks", "gs_gwc_set_tile_layer");
 

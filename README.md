@@ -8,7 +8,7 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
 | Target | State |
 | --- | --- |
-| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 33 tools, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
+| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 34 tools, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
 | GeoServer Cloud 3.0.1 | Files exist in `docker/cloud`; not built or run yet. |
 
 ## Install
@@ -65,7 +65,7 @@ Discovery
 - `gs_list_modules`: installed GeoServer modules
 
 Write
-- `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_publish_layers` (bulk, up to 50), `gs_update_layer`
+- `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_publish_layers` (bulk, up to 50), `gs_create_sql_view`, `gs_update_layer`
 - `gs_put_style`, `gs_create_layer_group`
 - `gs_delete`, `gs_reload`
 
