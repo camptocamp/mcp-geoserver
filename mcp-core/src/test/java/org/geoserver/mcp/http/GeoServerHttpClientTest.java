@@ -1,10 +1,14 @@
 package org.geoserver.mcp.http;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import org.geoserver.mcp.tool.ToolException;
 
 import java.util.List;
 import org.geoserver.config.GeoServer;
@@ -37,9 +41,29 @@ class GeoServerHttpClientTest {
 
     @Test
     void baseUrlPrefersInternalThenProxyThenRequest() {
-        assertEquals("http://internal", client("http://internal/", "http://proxy").baseUrl(ctx("http://req")));
-        assertEquals("http://proxy", client("", "http://proxy/").baseUrl(ctx("http://req")));
-        assertEquals("http://req", client("", null).baseUrl(ctx("http://req")));
+        assertEquals("http://internal", client("http://internal/", "http://proxy").baseUrl(ctx("http://evil.example.com")));
+        assertEquals("http://proxy", client("", "http://proxy/").baseUrl(ctx("http://evil.example.com")));
+        assertEquals("http://localhost:8080/geoserver", client("", null).baseUrl(ctx("http://localhost:8080/geoserver")));
+        assertEquals("http://127.0.0.1:8080", client("", null).baseUrl(ctx("http://127.0.0.1:8080")));
+    }
+
+    @Test
+    void requestFallbackRefusesNonLoopbackHost() {
+        ToolException e = assertThrows(ToolException.class, () -> client("", null).baseUrl(ctx("http://192.168.176.1:9110/geoserver")));
+        assertTrue(e.getMessage().contains("mcp.internalBaseUrl"), e.getMessage());
+        assertThrows(ToolException.class, () -> client("", null).baseUrl(ctx("http://evil.example.com")));
+        assertThrows(ToolException.class, () -> client("", "   ").baseUrl(ctx("http://169.254.169.254")));
+    }
+
+    @Test
+    void isLoopbackAcceptsOnlyLoopbackLiteralsAndLocalhost() {
+        assertTrue(GeoServerHttpClient.isLoopback("localhost"));
+        assertTrue(GeoServerHttpClient.isLoopback("127.0.0.1"));
+        assertTrue(GeoServerHttpClient.isLoopback("127.5.6.7"));
+        assertTrue(GeoServerHttpClient.isLoopback("[::1]"));
+        assertFalse(GeoServerHttpClient.isLoopback("192.168.1.1"));
+        assertFalse(GeoServerHttpClient.isLoopback("evil.example.com"));
+        assertFalse(GeoServerHttpClient.isLoopback(null));
     }
 
     @Test

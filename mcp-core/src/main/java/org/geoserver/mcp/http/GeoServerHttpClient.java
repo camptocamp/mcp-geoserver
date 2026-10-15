@@ -1,7 +1,9 @@
 package org.geoserver.mcp.http;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -53,7 +55,35 @@ public class GeoServerHttpClient {
         if (!internal.isBlank()) return strip(internal);
         String proxy = geoServer.getGlobal().getSettings().getProxyBaseUrl();
         if (proxy != null && !proxy.isBlank()) return strip(proxy);
-        return strip(ctx.requestBaseUrl());
+        // No trusted base URL configured: the request URL is built from the client Host header,
+        // so forwarding the caller's Authorization to it would be SSRF + credential exfiltration.
+        // Only accept it when it targets loopback; otherwise require an explicit mcp.internalBaseUrl.
+        String request = strip(ctx.requestBaseUrl());
+        if (!isLoopback(hostOf(request))) {
+            throw new ToolException("refusing to call GeoServer at '" + request
+                    + "' derived from the request Host header; set mcp.internalBaseUrl to the server's own base URL");
+        }
+        return request;
+    }
+
+    private static String hostOf(String url) {
+        try {
+            return URI.create(url).getHost();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    static boolean isLoopback(String host) {
+        if (host == null) return false;
+        String h = host.startsWith("[") && host.endsWith("]") ? host.substring(1, host.length() - 1) : host;
+        if (h.equalsIgnoreCase("localhost")) return true;
+        if (!h.matches("[0-9.]+|[0-9a-fA-F:]+")) return false; // only resolve IP literals, never DNS names
+        try {
+            return InetAddress.getByName(h).isLoopbackAddress();
+        } catch (UnknownHostException e) {
+            return false;
+        }
     }
 
     private static String strip(String url) {
