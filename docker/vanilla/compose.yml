@@ -1,4 +1,4 @@
-services:.github/workflows/build.yml
+services:
   geoserver:
     image: docker.osgeo.org/geoserver:3.0.1 # fixed
     ports:
