@@ -11,6 +11,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -33,9 +35,8 @@ jobs:
         run: ./mvnw -B -ntp verify
 
       - name: Snyk dependency monitoring
+        if: env.SNYK_TOKEN != ''
         uses: snyk/actions/maven-3-jdk-17@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: monitor
           args: --maven-aggregate-project --project-name=mcp-geoserver --target-reference=${{ github.ref_name }}
