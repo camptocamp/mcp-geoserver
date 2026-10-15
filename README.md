@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/geoserver/geoserver/main/src/web/core/src/main/java/org/geoserver/web/img/logo.png" alt="GeoServer" height="48" align="absmiddle"> GeoServer MCP
 
-An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles, query features, look at rendered maps, seed tile caches.
+An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles or bring them over from QGIS, query features, look at rendered maps, seed tile caches.
 
 Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
@@ -80,6 +80,22 @@ Claude calls `gs_create_workspace`, `gs_create_store` (type GeoTIFF), `gs_publis
 - Use HTTP Basic over TLS in production.
 - The endpoint is off by default.
 - `internalBaseUrl` is called with the caller's credentials.
+
+## QGIS styles to GeoServer
+
+Style a layer in QGIS, then ask the agent to publish that style on GeoServer. The agent drives two MCP servers, this one and [qgis-mcp](https://github.com/nkarasiak/qgis-mcp); the GeoServer extension never talks to QGIS. The workflow lives in one skill file, `skills/qgis-to-geoserver/SKILL.md`. Install for Claude Code with `ln -s "$PWD/skills/qgis-to-geoserver" ~/.claude/skills/`.
+
+1. Export: QGIS's own SLD exporter, called through qgis-mcp `execute_code` (`exportSldStyleV3` on QGIS 3.44 and later, `saveSldStyle` before). Output is SLD 1.1.0.
+2. Push: `gs_put_style`. On a validation error the agent fixes the SLD and retries.
+3. Compare: the agent renders the same extent in QGIS at 90.7 DPI and with `gs_get_map`, then looks at both images.
+
+The comparison is mandatory because GeoServer accepts some broken styles without complaint. Known gaps:
+
+- SVG markers: QGIS writes QGIS-relative paths, and GeoServer draws default squares instead. The skill checks that QGIS can resolve the SVG, uploads it next to the style through the REST resource API, and sets the href to the bare file name (verified on 3.0.1, `?fill=` parameters included).
+- Data-defined properties and shapeburst fills can drop silently.
+- Symbol sizes shift with DPI (QGIS 96, GeoServer 90.7).
+
+Before opening a QGIS project, the agent scans it for stored credentials (`password=`, `authcfg=`, `service=`) and asks before loading it.
 
 ## Plugins
 
