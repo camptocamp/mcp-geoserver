@@ -227,14 +227,12 @@ public class LayerTools {
     record VectorRequest(String nativeName, String name, String title, String srs, boolean includeNonSpatial, VirtualTable view) {}
 
     Map<String, Object> publishVector(ToolContext ctx, DataStoreInfo store, VectorRequest req) throws Exception {
-        String nativeName = req.nativeName();
-        String name = req.name();
         WorkspaceInfo ws = store.getWorkspace();
-        String layerName = name == null ? nativeName : name;
+        String layerName = req.name() == null ? req.nativeName() : req.name();
         LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + layerName);
         if (existing != null) return Views.published(existing, false, List.of());
         ctx.trace().curl("POST", Keys.REST_WORKSPACES + ws.getName() + "/datastores/" + store.getName() + "/featuretypes",
-                Keys.APPLICATION_JSON, "{\"featureType\":{\"name\":\"" + layerName + "\",\"nativeName\":\"" + nativeName + "\"}}");
+                Keys.APPLICATION_JSON, "{\"featureType\":{\"name\":\"" + layerName + "\",\"nativeName\":\"" + req.nativeName() + "\"}}");
         CatalogBuilder builder = new CatalogBuilder(catalog);
         builder.setWorkspace(ws);
         builder.setStore(store);
@@ -244,8 +242,8 @@ public class LayerTools {
         if (reused) {
             warnings.add("Reused feature type '" + layerName + "' that had no layer");
         } else {
-            ft = newFeatureType(builder, store, nativeName, req.includeNonSpatial(), req.view(), warnings);
-            if (name != null) ft.setName(name);
+            ft = newFeatureType(builder, store, req.nativeName(), req.includeNonSpatial(), req.view(), warnings);
+            if (req.name() != null) ft.setName(req.name());
             if (req.title() != null) ft.setTitle(req.title());
             setupSrsAndBounds(builder, ft, req.srs(), warnings);
         }
