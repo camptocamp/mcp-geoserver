@@ -11,6 +11,18 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 | Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 30 tools, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
 | GeoServer Cloud 3.0.1 | Files exist in `docker/cloud`; not built or run yet. |
 
+## Install
+
+1. Download `geoserver-mcp-<version>-bin.zip` from the [latest GitHub release](https://github.com/camptocamp/mcp-geoserver/releases/latest) and check it against `SHA256SUMS.txt`.
+2. Unzip the jars into GeoServer's `WEB-INF/lib` and restart GeoServer.
+3. Open the MCP admin page, enable the server and pick the allowed roles.
+
+The zip targets vanilla GeoServer. For GeoServer Cloud, see `docker/cloud/README.md`.
+
+## Releasing
+
+Maintainers: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow sets the Maven version from the tag, runs the unit tests and attaches the zip and its checksum to a GitHub release.
+
 ## Quick start (vanilla GeoServer 3.0.1 in Docker)
 
 ```bash
