@@ -1,11 +1,11 @@
 ---
 name: qgis-to-geoserver
-description: Use when moving a layer style from a QGIS project to GeoServer, or when checking that a GeoServer layer renders like it does in QGIS. Needs the GeoServer MCP (gs_* tools) and the QGIS MCP (execute_code) connected. Trigger on "QGIS style to GeoServer", "export SLD from QGIS", "compare QGIS and GeoServer rendering".
+description: Use when moving layer styles from a QGIS project to GeoServer, or when checking that GeoServer layers render like they do in QGIS. Needs the GeoServer MCP (gs_* tools) and the QGIS MCP (execute_code) connected. Trigger on "QGIS style to GeoServer", "export SLD from QGIS", "compare QGIS and GeoServer rendering".
 ---
 
-# QGIS style to GeoServer
+# QGIS styles to GeoServer
 
-QGIS converts the style; GeoServer stores and renders it; you compare the two renders. Write no converter code.
+QGIS converts the styles; a script uploads them; GeoServer validates and renders. Write no converter code. SLD bodies never enter the conversation: do not `Read` them, do not `cat` them, do not pass them to `gs_put_style`. Only names, counts, warnings and one-line errors.
 
 ## 1. Before loading a project: credentials
 
@@ -29,30 +29,50 @@ EOF
 
 Any output: stop. Show the user, in bold, `WARNING: this project contains credentials` followed by the markers and counts, and ask `Load it anyway? (y/n)`. Call `load_project` only after an explicit `y`. No output: load it.
 
-## 2. Export the style from QGIS
+## 2. Export every style with one `execute_code` call
 
-With `execute_code`, for each layer to move:
+File basename = GeoServer layer name. Fill `NAMES` with `{qgis layer name: geoserver layer name}` from `gs_list_layers`; leave it empty to export every vector layer under its QGIS name.
 
 ```python
-from qgis.core import Qgis, QgsProject, QgsSldExportContext
-layer = QgsProject.instance().mapLayersByName("LAYER")[0]
-if Qgis.QGIS_VERSION_INT >= 34400:
-    ctx = QgsSldExportContext()
-    body = layer.exportSldStyleV3(ctx).toString()
-    print(ctx.errors(), ctx.warnings())
-else:
-    layer.saveSldStyle("/tmp/LAYER.sld")
-    body = open("/tmp/LAYER.sld").read()
-open("/tmp/LAYER.sld", "w").write(body)
+import os
+from qgis.core import Qgis, QgsProject, QgsMapLayer, QgsSldExportContext
+OUT = "/tmp/sld"
+NAMES = {}
+os.makedirs(OUT, exist_ok=True)
+layers = QgsProject.instance().mapLayers().values()
+todo = {l.name(): NAMES.get(l.name(), l.name()) for l in layers
+        if l.type() == QgsMapLayer.VectorLayer and (not NAMES or l.name() in NAMES)}
+for qname, gname in todo.items():
+    layer = QgsProject.instance().mapLayersByName(qname)[0]
+    path = os.path.join(OUT, gname + ".sld")
+    if Qgis.QGIS_VERSION_INT >= 34400:
+        ctx = QgsSldExportContext()
+        body = layer.exportSldStyleV3(ctx).toString()
+        open(path, "w").write(body)
+        issues = [str(e) for e in ctx.errors()] + [str(w) for w in ctx.warnings()]
+    else:
+        ok, msg = layer.saveSldStyle(path)
+        issues = [] if ok else [msg]
+    print(gname, len(open(path).read()), "; ".join(issues) or "ok")
 ```
 
-Report every entry of `ctx.errors()` and `ctx.warnings()` to the user: these are parts QGIS could not export or changed.
+Report every non-`ok` line to the user: those are parts QGIS could not export or changed. Data-defined properties and shapeburst fills are dropped without a message; name them if the user asks what was lost.
 
-## 3. Fix what QGIS writes and GeoServer cannot use
+## 3. Upload with the script
 
-Read `/tmp/LAYER.sld` and check:
+`$GS_URL` is the GeoServer base URL without `/mcp` (for example `http://localhost:8080/geoserver`), `$GS_AUTH` is `user:password`. `-d` sets each style as the default style of layer `WS:<basename>`.
 
-- `OnlineResource xlink:href` pointing at an SVG by QGIS path (`/usr/share/qgis/svg/...`, `gpsicons/...`): GeoServer silently draws a square instead. First resolve each href (without its `?` query) to a file and check it exists, with `execute_code`:
+```bash
+GS_URL=... GS_AUTH=... bash skills/qgis-to-geoserver/upload-styles.sh -d /tmp/sld WS
+```
+
+One line per style: `name POST|PUT status [first error line] [default status]`. A 2xx means GeoServer parsed and stored the style. Nothing else is needed for the styles that passed.
+
+## 4. Fix only what failed, without reading the file
+
+Locate the element named in the error line with `grep -n` on that one file, never the whole body. Known cases:
+
+- `OnlineResource` href pointing at a QGIS path (`/usr/share/qgis/svg/...`, `gpsicons/...`, a path with spaces): GeoServer rejects the URI or silently draws a square. Resolve the href (without its `?` query) with `execute_code`:
 
   ```python
   import os
@@ -61,20 +81,19 @@ Read `/tmp/LAYER.sld` and check:
   print(path, bool(path) and os.path.exists(path))
   ```
 
-  If the file does not exist, QGIS itself is drawing a fallback marker: stop and ask the user to pick a real SVG in QGIS. Otherwise upload that file next to the style, named after the SVG's file name, and set the href to the bare file name plus any `?fill=...` query (verified on GeoServer 3.0.1: `param(fill)` in the SVG is honoured):
-  `$GS_URL` is the GeoServer base URL without `/mcp` (for example `http://localhost:8080/geoserver`) and `$GS_AUTH` is `user:password`:
-  `curl -u "$GS_AUTH" -X PUT -H 'Content-Type: image/svg+xml' --data-binary @"$SVG_PATH" "$GS_URL/rest/resource/styles/NAME.svg"`
-  For a workspace style, use `/rest/resource/workspaces/WS/styles/NAME.svg`.
-- Every `ogc:PropertyName` must exist on the GeoServer layer (`gs_get_layer`). QGIS ignores unknown fields; GeoServer rejects the whole GetMap.
-- Data-defined properties and shapeburst fills are dropped without a message. Tell the user which ones the QGIS style used.
+  If the file does not exist, QGIS itself draws a fallback marker: ask the user to pick a real SVG in QGIS, re-export, re-upload. Otherwise upload the SVG next to the style and rewrite the href to the bare file name plus any `?fill=...` query (verified on GeoServer 3.0.1: `param(fill)` in the SVG is honoured):
+  `curl -u "$GS_AUTH" -X PUT -H 'Content-Type: image/svg+xml' --data-binary @"$SVG_PATH" "$GS_URL/rest/resource/workspaces/WS/styles/NAME.svg"`
+  then `sed -i 's|xlink:href="OLD|xlink:href="NAME.svg|' /tmp/sld/LAYER.sld` and rerun the script on a directory holding only the fixed files.
+- `Unable to find function X`: a QGIS expression function with no GeoServer equivalent (`array_to_string`, ...). Simplify the rule in QGIS and re-export; do not hand-write SLD.
+- A `PropertyName` that is not a column of the GeoServer layer (QGIS join field, virtual field): GeoServer stores the style but every GetMap fails; `gs_check_layer` reports it in step 5. Either drop the rule in QGIS or publish a SQL view that carries the field, then restyle.
 
-## 4. Push
+## 5. Check each layer with text, one layer per call
 
-`gs_put_style(name, workspace, body)`, then `gs_update_layer(name, defaultStyle)`. For a workspace style, `defaultStyle` must be `workspace:name`. GeoServer layer names may differ from QGIS layer names: look the layer up with `gs_list_layers` first. On an `Invalid sld` error, fix the named element and push again.
+After upload, call `gs_check_layer(name)` for each layer: it does the GetMap and returns status, any ServiceException text and the share of painted pixels. Fix and recheck only the layers it flags. Do not call `gs_get_map` and do not `Read` PNG files for this: a picture costs image tokens and says less than the text check.
 
-## 5. Compare, always
+## 6. Image comparison, only on explicit user request
 
-GeoServer validation does not catch broken SVG references, so compare after every push.
+Only when the user asks to compare renders, and one layer at a time: rendering all layers in one QGIS job has crashed QGIS.
 
 QGIS render, with `execute_code`:
 
@@ -103,15 +122,15 @@ v = ms.visibleExtent()
 print(layer.crs().authid(), v.xMinimum(), v.yMinimum(), v.xMaximum(), v.yMaximum())
 ```
 
-GeoServer render: `gs_get_map` with the printed CRS and bbox, width 800, height 500. Look at both images side by side and name every difference you see. Expect small label placement and antialiasing differences; anything else is a real difference.
-
-For a number, fetch the GetMap PNG with the same bbox, SRS and size, then run the comparison:
+GeoServer render, fetched to disk rather than into the conversation:
 `curl -s -u "$GS_AUTH" -o /tmp/gs_LAYER.png "$GS_URL/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=WS:LAYER&STYLES=&SRS=EPSG:XXXX&BBOX=minx,miny,maxx,maxy&WIDTH=800&HEIGHT=500&FORMAT=image/png"`
 `compare -metric AE -fuzz 10% /tmp/qgis_LAYER.png /tmp/gs_LAYER.png /tmp/diff_LAYER.png`
-In the reference spike, matching styles gave 0 to 3% of pixels; a broken marker gave 15%.
+Report the number. Matching styles gave 0 to 3% of pixels in the reference spike; a broken marker gave 15%. Look at the images only if the user asks to see them.
 
 ## Do not
 
-- Render in QGIS by modifying the user's layers or their renderer symbols; render read-only as above.
+- Read, cat or print an SLD body; grep for one element when an error names it.
+- Send a style through `gs_put_style` when the script can upload it; `gs_put_style` is for a single small style written by hand.
+- Render in QGIS by modifying the user's layers or their renderer symbols; render read-only as above, one layer per job.
 - Run a network request inside `execute_code`: it blocks the QGIS window.
 - Print connection strings, passwords or `authcfg` contents.
