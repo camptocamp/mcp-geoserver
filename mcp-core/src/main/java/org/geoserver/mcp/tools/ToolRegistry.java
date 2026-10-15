@@ -12,6 +12,7 @@ import org.geoserver.mcp.tools.catalog.DimensionTools;
 import org.geoserver.mcp.tools.catalog.LayerGroupTools;
 import org.geoserver.mcp.tools.catalog.LayerTools;
 import org.geoserver.mcp.tools.catalog.StoreTools;
+import org.geoserver.mcp.tools.catalog.StyleGeneratorTools;
 import org.geoserver.mcp.tools.catalog.StyleTools;
 import org.geoserver.mcp.tools.catalog.WorkspaceTools;
 import org.geoserver.mcp.tools.data.DataTools;
@@ -29,6 +30,7 @@ public final class ToolRegistry {
         all.addAll(new LayerTools(catalog).tools());
         all.addAll(new DimensionTools(catalog).tools());
         all.addAll(new StyleTools(catalog).tools());
+        all.addAll(new StyleGeneratorTools(catalog).tools());
         all.addAll(new LayerGroupTools(catalog).tools());
         all.addAll(new DiscoveryTools().tools());
         all.addAll(new DataTools(catalog, http).tools());
