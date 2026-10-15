@@ -13,6 +13,15 @@ An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude 
 
 Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
+## Why this one
+
+- **No extra process.** A jar dropped into `WEB-INF/lib`: no Python service, no sidecar container, nothing else to deploy, patch or monitor next to GeoServer.
+- **Runs as the caller.** Every tool goes through GeoServer's own security with the caller's credentials and an allowed-roles gate. There is no shared admin account behind the chat.
+- **Equivalent commands.** In verbose mode each result ends with the exact `curl` calls that do the same thing over REST, so an administrator can check what the AI did or paste the commands into deployment scripts.
+- **Checks before writing.** JDBC stores must answer `select 1` before anything is saved, PostGIS stores report missing privileges, styles are parsed before they are stored, and `gs_validate_style` reports unknown functions, broken graphics and missing attributes without writing anything.
+- **QGIS to production.** The skill in `skills/qgis-to-geoserver` lets the agent carry a QGIS style to GeoServer, fix SLD validation errors and compare both renderings.
+- **Built for GeoServer 3.** Jakarta and Spring 7, vanilla GeoServer 3.0.x, with a GeoServer Cloud module. Maintained by Camptocamp, a long-standing contributor to the GeoServer core.
+
 ## Status
 
 | Target | State |
@@ -131,6 +140,14 @@ The comparison is mandatory because GeoServer accepts some broken styles without
 - Symbol sizes shift with DPI (QGIS 96, GeoServer 90.7).
 
 Before opening a QGIS project, the agent scans it for stored credentials (`password=`, `authcfg=`, `service=`) and asks before loading it.
+
+## Rasters on S3, Google Cloud Storage or HTTP
+
+`gs_create_store` with type `GeoTIFF` and `params.url` set to `s3://bucket/key.tif`, `gs://bucket/key.tif` or `https://...` publishes the file as a Cloud Optimized GeoTIFF read in place; nothing is copied to the server. Then `gs_publish_layer` as usual.
+
+- Install the matching GeoServer community module: `cog-s3`, `cog-google` or `cog-http`. Without it the tool says which one is missing.
+- S3 credentials never go through the chat. Set them on GeoServer: `IIO_S3_AWS_USER`, `IIO_S3_AWS_PASSWORD`, `IIO_S3_AWS_REGION`, and `IIO_S3_AWS_ENDPOINT` for S3-compatible storage (MinIO, Exoscale SOS). Public buckets need nothing. Google Cloud reads `GOOGLE_APPLICATION_CREDENTIALS`.
+- The file must be a COG (tiled, with overviews). Convert with `gdal_translate -of COG in.tif out.tif`.
 
 ## Plugins
 

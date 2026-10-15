@@ -12,7 +12,7 @@ Nothing here is hardcoded. The live answer for a server is `gs_list_store_types`
 
 ## Exceptions
 
-- COG: there is no COG store type. Use type `GeoTIFF` or `ImageMosaic` with `url` = `cog://https://...`. The reader is in core; the cog-http, cog-s3, cog-google and cog-azure modules add the range readers.
+- COG: there is no COG store type. `gs_create_store` with type `GeoTIFF` and an `s3://`, `gs://` or `http(s)://` url adds the `cog://` prefix and the matching range reader (S3, GS, HTTP) itself. For `ImageMosaic`, or Azure, pass `cog://...` and configure the mosaic. The cog-http, cog-s3, cog-google and cog-azure modules add the range readers; S3 credentials come from the `IIO_S3_AWS_*` environment on the server.
 - App Schema: listed as a store type, but `url` must point to a mapping file already on the server.
 - WMS and WMTS cascading stores: readable with `gs_get_store`, not creatable in v1. WFS cascading (Web Feature Server NG) is a regular store type.
 - IAU and Raster Attribute Table add no store. IAU adds `IAU:xxxx` codes for the `srs` arguments; RAT adds REST and UI only.
