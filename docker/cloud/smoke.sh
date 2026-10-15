@@ -14,4 +14,4 @@ echo "gs_status"
 mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"gs_status","arguments":{"verbose":true}}}'
 echo
 echo "gs_list_store_types raster"
-mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"gs_list_store_types","arguments":{"kind":"raster"}}}' | grep -o '"name":"[A-Za-z]*"' | sort -u
+mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"gs_list_store_types","arguments":{"kind":"raster"}}}' | grep -o '\\"name\\":\\"[^\\]*' | cut -d'"' -f4 | sort -u
