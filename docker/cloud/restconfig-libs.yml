@@ -1,0 +1,8 @@
+# GeoServer Cloud 3.0.2+ overlay: run the stock restconfig image and drop the MCP
+# jars into /opt/additional_libs (geoserver-cloud PR #920). No derived image needed.
+# Set MCP_LIBS to an absolute path to docker/cloud/additional_libs before `up`.
+services:
+  restconfig:
+    image: geoservercloud/geoserver-cloud-rest:3.0.2-SNAPSHOT
+    volumes:
+      - ${MCP_LIBS:?set MCP_LIBS to the absolute path of docker/cloud/additional_libs}:/opt/additional_libs:ro
