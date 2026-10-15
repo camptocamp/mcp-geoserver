@@ -16,31 +16,31 @@ public final class Schema {
     }
 
     public Schema string(String name, String description, boolean req) {
-        return add(name, Map.of("type", "string", "description", description), req);
+        return add(name, Map.of("type", Keys.STRING, Keys.DESCRIPTION, description), req);
     }
 
     public Schema integer(String name, String description, boolean req) {
-        return add(name, Map.of("type", "integer", "description", description), req);
+        return add(name, Map.of("type", "integer", Keys.DESCRIPTION, description), req);
     }
 
     public Schema bool(String name, String description, boolean req) {
-        return add(name, Map.of("type", "boolean", "description", description), req);
+        return add(name, Map.of("type", "boolean", Keys.DESCRIPTION, description), req);
     }
 
     public Schema stringArray(String name, String description, boolean req) {
-        return add(name, Map.of("type", "array", "description", description, "items", Map.of("type", "string")), req);
+        return add(name, Map.of("type", "array", Keys.DESCRIPTION, description, "items", Map.of("type", Keys.STRING)), req);
     }
 
     public Schema numberArray(String name, String description, boolean req) {
-        return add(name, Map.of("type", "array", "description", description, "items", Map.of("type", "number")), req);
+        return add(name, Map.of("type", "array", Keys.DESCRIPTION, description, "items", Map.of("type", "number")), req);
     }
 
     public Schema map(String name, String description, boolean req) {
-        return add(name, Map.of("type", "object", "description", description, "additionalProperties", true), req);
+        return add(name, Map.of("type", "object", Keys.DESCRIPTION, description, "additionalProperties", true), req);
     }
 
     public Schema enumeration(String name, String description, boolean req, String... values) {
-        return add(name, Map.of("type", "string", "description", description, "enum", List.of(values)), req);
+        return add(name, Map.of("type", Keys.STRING, Keys.DESCRIPTION, description, "enum", List.of(values)), req);
     }
 
     private Schema add(String name, Map<String, Object> def, boolean req) {

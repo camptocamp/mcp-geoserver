@@ -10,6 +10,7 @@ import org.geoserver.mcp.tool.Args;
 import org.geoserver.mcp.tool.GsTool;
 import org.geoserver.mcp.tool.Schema;
 import org.geoserver.mcp.tool.ToolContext;
+import org.geoserver.mcp.tool.Keys;
 
 public class WorkspaceTools {
     protected final Catalog catalog;
@@ -64,14 +65,14 @@ public class WorkspaceTools {
                 return McpSchema.Tool.builder("gs_create_workspace", Schema.object()
                         .string("name", "Workspace name (also the namespace prefix)", true)
                         .string("namespaceUri", "Namespace URI, defaults to http://<name>", false)
-                        .bool("isolated", "Isolated workspace", false).build())
+                        .bool(Keys.ISOLATED, "Isolated workspace", false).build())
                         .description("Create a workspace and its namespace. Returns the existing one with created=false if it already exists.").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String name = args.string("name");
                 String uri = args.string("namespaceUri", "http://" + name);
                 ctx.trace().curl("POST", "/rest/workspaces", "application/json",
-                        "{\"workspace\":{\"name\":\"" + name + "\",\"isolated\":" + args.bool("isolated", false) + "}}");
+                        "{\"workspace\":{\"name\":\"" + name + "\",\"isolated\":" + args.bool(Keys.ISOLATED, false) + "}}");
                 WorkspaceInfo existing = catalog.getWorkspaceByName(name);
                 if (existing != null) {
                     Map<String, Object> m = Views.workspace(existing, catalog);
@@ -80,7 +81,7 @@ public class WorkspaceTools {
                 }
                 WorkspaceInfo ws = catalog.getFactory().createWorkspace();
                 ws.setName(name);
-                ws.setIsolated(args.bool("isolated", false));
+                ws.setIsolated(args.bool(Keys.ISOLATED, false));
                 org.geoserver.catalog.NamespaceInfo ns = catalog.getFactory().createNamespace();
                 ns.setPrefix(name);
                 ns.setURI(uri);

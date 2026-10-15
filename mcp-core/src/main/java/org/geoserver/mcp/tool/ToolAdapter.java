@@ -31,7 +31,7 @@ public final class ToolAdapter {
     static McpSchema.Tool withVerbose(McpSchema.Tool tool) {
         Map<String, Object> schema = new LinkedHashMap<>(tool.inputSchema());
         Map<String, Object> props = new LinkedHashMap<>((Map<String, Object>) schema.getOrDefault("properties", Map.of()));
-        props.put("verbose", Map.of("type", "boolean", "description", "Include the equivalent curl commands in the result"));
+        props.put(Keys.VERBOSE, Map.of("type", "boolean", "description", "Include the equivalent curl commands in the result"));
         schema.put("properties", props);
         return McpSchema.Tool.builder(tool.name(), schema)
                 .title(tool.title())
@@ -43,7 +43,7 @@ public final class ToolAdapter {
     static McpSchema.CallToolResult invoke(GsTool tool, McpSettingsStore settings, ObjectMapper json,
             McpTransportContext tctx, McpSchema.CallToolRequest req) {
         Args args = new Args(req.arguments());
-        boolean verbose = args.has("verbose") ? args.bool("verbose", false) : settings.load().verbose();
+        boolean verbose = args.has(Keys.VERBOSE) ? args.bool(Keys.VERBOSE, false) : settings.load().verbose();
         String auth = (String) tctx.get(ToolContext.AUTHORIZATION_KEY);
         String base = (String) tctx.get(ToolContext.REQUEST_BASE_URL_KEY);
         ToolContext ctx = new ToolContext(verbose, new CommandTrace(), auth, base == null ? "" : base);

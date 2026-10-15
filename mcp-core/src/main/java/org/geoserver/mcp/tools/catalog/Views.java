@@ -27,6 +27,7 @@ import org.geoserver.mcp.tool.ToolException;
 import org.geoserver.platform.GeoServerExtensions;
 import org.geoserver.security.GeoServerSecurityManager;
 import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.geoserver.mcp.tool.Keys;
 
 public final class Views {
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -54,7 +55,7 @@ public final class Views {
 
     public static Map<String, Object> store(StoreInfo s) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("workspace", s.getWorkspace().getName());
+        m.put(Keys.WORKSPACE, s.getWorkspace().getName());
         m.put("name", s.getName());
         m.put("kind", storeKind(s));
         m.put("type", s.getType());
@@ -96,7 +97,7 @@ public final class Views {
     public static Map<String, Object> layer(LayerInfo l) {
         ResourceInfo r = l.getResource();
         Map<String, Object> m = layerSummary(l);
-        m.put("workspace", r.getStore().getWorkspace().getName());
+        m.put(Keys.WORKSPACE, r.getStore().getWorkspace().getName());
         m.put("store", r.getStore().getName());
         m.put("nativeName", r.getNativeName());
         m.put("abstract", r.getAbstract());
@@ -143,7 +144,7 @@ public final class Views {
     public static Map<String, Object> style(StyleInfo s) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", s.getName());
-        m.put("workspace", s.getWorkspace() == null ? null : s.getWorkspace().getName());
+        m.put(Keys.WORKSPACE, s.getWorkspace() == null ? null : s.getWorkspace().getName());
         m.put("format", s.getFormat());
         m.put("formatVersion", s.getFormatVersion() == null ? null : s.getFormatVersion().toString());
         m.put("filename", s.getFilename());
@@ -153,7 +154,7 @@ public final class Views {
     public static Map<String, Object> layerGroup(LayerGroupInfo g) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", g.getName());
-        m.put("workspace", g.getWorkspace() == null ? null : g.getWorkspace().getName());
+        m.put(Keys.WORKSPACE, g.getWorkspace() == null ? null : g.getWorkspace().getName());
         m.put("mode", String.valueOf(g.getMode()));
         m.put("title", g.getTitle());
         List<Map<String, Object>> layers = new ArrayList<>();

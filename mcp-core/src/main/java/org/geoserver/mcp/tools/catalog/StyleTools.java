@@ -39,6 +39,7 @@ import org.geoserver.mcp.tool.Args;
 import org.geoserver.mcp.tool.GsTool;
 import org.geoserver.mcp.tool.Schema;
 import org.geoserver.mcp.tool.ToolContext;
+import org.geoserver.mcp.tool.Keys;
 
 public class StyleTools {
     private static final Pattern SLD_11_ROOT = Pattern.compile(
@@ -58,20 +59,20 @@ public class StyleTools {
     static String stylePath(StyleInfo s) {
         return s.getWorkspace() == null
                 ? "/rest/styles/" + s.getName()
-                : "/rest/workspaces/" + s.getWorkspace().getName() + "/styles/" + s.getName();
+                : Keys.REST_WORKSPACES + s.getWorkspace().getName() + "/styles/" + s.getName();
     }
 
     GsTool list() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_list_styles", Schema.object().string("workspace", "Restrict to this workspace; omit for global styles and all workspaces", false).build())
+                return McpSchema.Tool.builder("gs_list_styles", Schema.object().string(Keys.WORKSPACE, "Restrict to this workspace; omit for global styles and all workspaces", false).build())
                         .description("List styles").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 List<StyleInfo> styles;
-                if (args.has("workspace")) {
-                    var ws = Lookups.workspace(catalog, args.string("workspace"));
-                    ctx.trace().curl("GET", "/rest/workspaces/" + ws.getName() + "/styles.json", null, null);
+                if (args.has(Keys.WORKSPACE)) {
+                    var ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
+                    ctx.trace().curl("GET", Keys.REST_WORKSPACES + ws.getName() + "/styles.json", null, null);
                     styles = catalog.getStylesByWorkspace(ws);
                 } else {
                     ctx.trace().curl("GET", "/rest/styles.json", null, null);
@@ -89,11 +90,11 @@ public class StyleTools {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_get_style", Schema.object()
                         .string("name", "Style name", true)
-                        .string("workspace", "Workspace of the style; omit for global", false).build())
+                        .string(Keys.WORKSPACE, "Workspace of the style; omit for global", false).build())
                         .description("Get a style's metadata and its body (SLD, or CSS/YSLD/MBStyle per its format)").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
-                StyleInfo s = Lookups.style(catalog, args.string("workspace", null), args.string("name"));
+                StyleInfo s = Lookups.style(catalog, args.string(Keys.WORKSPACE, null), args.string("name"));
                 ctx.trace().curl("GET", stylePath(s) + ".sld", null, null);
                 Map<String, Object> m = Views.style(s);
                 try (BufferedReader r = catalog.getResourcePool().readStyle(s)) {
@@ -109,44 +110,31 @@ public class StyleTools {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_put_style", Schema.object()
                         .string("name", "Style name", true)
-                        .string("workspace", "Workspace; omit for a global style", false)
+                        .string(Keys.WORKSPACE, "Workspace; omit for a global style", false)
                         .string("body", "Full style document in the given format", true)
-                        .string("format", "sld (default), or css, ysld, mbstyle when that extension is installed", false).build())
+                        .string(Keys.FORMAT, "sld (default), or css, ysld, mbstyle when that extension is installed", false).build())
                         .description("Create or replace a style. The body is parsed before anything is written.").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 String name = args.string("name");
-                String workspace = args.string("workspace", null);
+                String workspace = args.string(Keys.WORKSPACE, null);
                 String body = args.string("body");
-                StyleHandler handler = handler(args.string("format", SLDHandler.FORMAT));
+                StyleHandler handler = handler(args.string(Keys.FORMAT, SLDHandler.FORMAT));
                 Version version = version(handler, body);
-                try {
-                    var parsed = handler.parse(new StringReader(body), version, null, null);
-                    if (parsed == null || parsed.getStyledLayers().length == 0) throw new ToolException("Style has no styled layers");
-                } catch (ToolException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new ToolException("Invalid " + handler.getFormat() + ": " + e.getMessage());
-                }
+                requireParses(handler, body, version);
                 WorkspaceInfo ws = workspace == null ? null : Lookups.workspace(catalog, workspace);
-                StyleInfo existing = ws == null ? catalog.getStyleByName((WorkspaceInfo) null, name) : catalog.getStyleByName(ws, name);
+                StyleInfo existing = find(ws, name);
                 boolean created = existing == null;
-                StyleInfo style = existing;
-                if (created) {
-                    style = catalog.getFactory().createStyle();
-                    style.setName(name);
-                    style.setWorkspace(ws);
-                    style.setFilename(name + "." + handler.getFileExtension());
-                }
+                StyleInfo style = created ? newStyle(name, ws, handler) : existing;
                 style.setFormat(handler.getFormat());
                 style.setFormatVersion(version);
-                String path = ws == null ? "/rest/styles" : "/rest/workspaces/" + ws.getName() + "/styles";
+                String path = ws == null ? "/rest/styles" : Keys.REST_WORKSPACES + ws.getName() + "/styles";
                 ctx.trace().curl(created ? "POST" : "PUT", created ? path + "?name=" + name : path + "/" + name,
                         handler.mimeType(version), body);
                 catalog.getResourcePool().writeStyle(style, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
                 if (created) catalog.add(style);
                 else catalog.save(style);
-                Map<String, Object> m = Views.style(ws == null ? catalog.getStyleByName((WorkspaceInfo) null, name) : catalog.getStyleByName(ws, name));
+                Map<String, Object> m = Views.style(find(ws, name));
                 m.put("created", created);
                 return m;
             }
@@ -159,52 +147,26 @@ public class StyleTools {
                 return McpSchema.Tool.builder("gs_validate_style", Schema.object()
                         .string("body", "Style document to check; omit when checking a stored style by name", false)
                         .string("name", "Stored style name to check instead of body", false)
-                        .string("workspace", "Workspace of the style; relative graphics resolve in its styles directory", false)
-                        .string("layer", "Layer, workspace:name; when given, attributes the style references are checked against it", false)
-                        .string("format", "sld (default), css, ysld, mbstyle; ignored with name", false).build())
+                        .string(Keys.WORKSPACE, "Workspace of the style; relative graphics resolve in its styles directory", false)
+                        .string(Keys.LAYER, "Layer, workspace:name; when given, attributes the style references are checked against it", false)
+                        .string(Keys.FORMAT, "sld (default), css, ysld, mbstyle; ignored with name", false).build())
                         .description("Parse a style without writing anything and report findings: parse error, version, unknown functions, "
                                 + "ExternalGraphic hrefs that do not resolve, attributes missing from the layer. Nothing is stored.").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
-                String body;
-                StyleHandler handler;
-                WorkspaceInfo ws;
-                if (args.has("body")) {
-                    body = args.string("body");
-                    handler = handler(args.string("format", SLDHandler.FORMAT));
-                    ws = args.has("workspace") ? Lookups.workspace(catalog, args.string("workspace")) : null;
-                } else if (args.has("name")) {
-                    StyleInfo s = Lookups.style(catalog, args.string("workspace", null), args.string("name"));
-                    ctx.trace().curl("GET", stylePath(s) + ".sld", null, null);
-                    handler = handler(s.getFormat());
-                    ws = s.getWorkspace();
-                    try (BufferedReader r = catalog.getResourcePool().readStyle(s)) {
-                        body = r.lines().collect(Collectors.joining("\n"));
-                    }
-                } else {
-                    throw new ToolException("Pass body or name");
-                }
-                Version version = version(handler, body);
+                Source src = source(ctx, args);
+                Version version = version(src.handler(), src.body());
                 GeoServerDataDirectory dd = new GeoServerDataDirectory(catalog.getResourceLoader());
-                String parseError = null;
-                StyledLayerDescriptor sld = null;
-                try {
-                    sld = handler.parse(new StringReader(body), version, ws == null ? dd.getResourceLocator() : dd.getResourceLocator(ws), null);
-                    if (sld == null || sld.getStyledLayers().length == 0) parseError = "Style has no styled layers";
-                } catch (Exception e) {
-                    parseError = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-                }
-                List<String> unknownFunctions = unknownFunctions(body);
-                List<String> unresolvedGraphics = unresolvedGraphics(body, dd, ws);
-                List<String> missingAttributes = null;
-                if (args.has("layer") && sld != null) {
-                    LayerInfo layer = Lookups.layer(catalog, args.string("layer"));
-                    if (layer.getResource() instanceof FeatureTypeInfo ft) missingAttributes = missingAttributes(sld, ft);
-                }
+                Parsed parsed = parse(src, version, dd);
+                List<String> unknownFunctions = unknownFunctions(src.body());
+                List<String> unresolvedGraphics = unresolvedGraphics(src.body(), dd, src.ws());
+                List<String> missingAttributes = args.has(Keys.LAYER) && parsed.sld() != null ? missingAttributes(parsed.sld(), args.string(Keys.LAYER)) : null;
+                String parseError = parsed.error();
+                StyleHandler handler = src.handler();
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("valid", parseError == null && unknownFunctions.isEmpty() && unresolvedGraphics.isEmpty()
                         && (missingAttributes == null || missingAttributes.isEmpty()));
-                m.put("format", handler.getFormat());
+                m.put(Keys.FORMAT, handler.getFormat());
                 m.put("version", version.toString());
                 if (parseError != null) m.put("parseError", parseError);
                 m.put("unknownFunctions", unknownFunctions);
@@ -213,6 +175,62 @@ public class StyleTools {
                 return m;
             }
         };
+    }
+
+    record Source(String body, StyleHandler handler, WorkspaceInfo ws) {}
+
+    record Parsed(StyledLayerDescriptor sld, String error) {}
+
+    Source source(ToolContext ctx, Args args) throws IOException {
+        if (args.has("body")) {
+            WorkspaceInfo ws = args.has(Keys.WORKSPACE) ? Lookups.workspace(catalog, args.string(Keys.WORKSPACE)) : null;
+            return new Source(args.string("body"), handler(args.string(Keys.FORMAT, SLDHandler.FORMAT)), ws);
+        }
+        if (!args.has("name")) throw new ToolException("Pass body or name");
+        StyleInfo s = Lookups.style(catalog, args.string(Keys.WORKSPACE, null), args.string("name"));
+        ctx.trace().curl("GET", stylePath(s) + ".sld", null, null);
+        try (BufferedReader r = catalog.getResourcePool().readStyle(s)) {
+            return new Source(r.lines().collect(Collectors.joining("\n")), handler(s.getFormat()), s.getWorkspace());
+        }
+    }
+
+    static Parsed parse(Source src, Version version, GeoServerDataDirectory dd) {
+        try {
+            StyledLayerDescriptor sld = src.handler().parse(new StringReader(src.body()), version,
+                    src.ws() == null ? dd.getResourceLocator() : dd.getResourceLocator(src.ws()), null);
+            if (sld == null || sld.getStyledLayers().length == 0) return new Parsed(sld, "Style has no styled layers");
+            return new Parsed(sld, null);
+        } catch (Exception e) {
+            return new Parsed(null, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    List<String> missingAttributes(StyledLayerDescriptor sld, String layerName) throws IOException {
+        LayerInfo layer = Lookups.layer(catalog, layerName);
+        return layer.getResource() instanceof FeatureTypeInfo ft ? missingAttributes(sld, ft) : null;
+    }
+
+    static void requireParses(StyleHandler handler, String body, Version version) {
+        try {
+            var parsed = handler.parse(new StringReader(body), version, null, null);
+            if (parsed == null || parsed.getStyledLayers().length == 0) throw new ToolException("Style has no styled layers");
+        } catch (ToolException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ToolException("Invalid " + handler.getFormat() + ": " + e.getMessage());
+        }
+    }
+
+    StyleInfo find(WorkspaceInfo ws, String name) {
+        return ws == null ? catalog.getStyleByName((WorkspaceInfo) null, name) : catalog.getStyleByName(ws, name);
+    }
+
+    StyleInfo newStyle(String name, WorkspaceInfo ws, StyleHandler handler) {
+        StyleInfo style = catalog.getFactory().createStyle();
+        style.setName(name);
+        style.setWorkspace(ws);
+        style.setFilename(name + "." + handler.getFileExtension());
+        return style;
     }
 
     static Version version(StyleHandler handler, String body) {

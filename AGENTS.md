@@ -36,6 +36,17 @@ Tests extending `GeoServerSystemTestSupport` are JUnit 4 (`org.junit.Test`). Eve
 - No code comments except for hidden constraints. No em dashes anywhere.
 - Commit after every task. Messages: `feat|fix|test|docs|chore: <what>`.
 
+## Quality gate (SonarQube)
+
+CI fails when the SonarQube quality gate fails on new code. Write code that passes it:
+
+- A string literal of 5+ characters used 3 or more times in one file goes in `org.geoserver.mcp.tool.Keys` as a constant (JSON keys, argument names, REST path prefixes, repeated descriptions). Reuse an existing constant before adding one.
+- Cognitive complexity stays at 15 or below per method. When a tool's `call` grows, extract helpers on the tool group class (validation, building, tracing) rather than nesting more branches.
+- XML parsers and transformers disable external entities: `FEATURE_SECURE_PROCESSING` and `disallow-doctype-decl` on `DocumentBuilderFactory`, empty `ACCESS_EXTERNAL_DTD` and `ACCESS_EXTERNAL_STYLESHEET` on `TransformerFactory`. Reuse `GwcTools.parseXml` and `GwcTools.toXml`.
+- A constant must not differ from a field or record component only by case (e.g. `AUTHORIZATION` next to `authorization`); suffix context-map keys with `_KEY`.
+- Coverage on new code stays at 90% or above: every new tool or branch comes with a test. Prefer Mockito or `StubHttpServer` unit tests over `GeoServerSystemTestSupport`, which is slow.
+- No unused imports.
+
 ## Tool catalogue
 
 Every tool also accepts `verbose: boolean` and declares MCP annotations (read-only, destructive, idempotent) from `ToolHints`.
