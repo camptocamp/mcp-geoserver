@@ -18,6 +18,7 @@ import org.geoserver.mcp.settings.McpSettingsStore;
 import org.geoserver.mcp.tool.GsTool;
 import org.geoserver.mcp.tool.ToolAdapter;
 import org.geoserver.mcp.tool.ToolContext;
+import org.geoserver.mcp.tool.ToolResources;
 
 public class McpServerHolder {
     private final HttpServletStatelessServerTransport transport;
@@ -25,6 +26,7 @@ public class McpServerHolder {
 
     public McpServerHolder(List<GsTool> tools, McpSettingsStore settings, ObjectMapper json) {
         McpJsonMapper mapper = new JacksonMcpJsonMapper(json);
+        ToolResources resources = new ToolResources(tools, settings, json);
         this.transport = HttpServletStatelessServerTransport.builder()
                 .jsonMapper(mapper)
                 .messageEndpoint("/mcp")
@@ -33,8 +35,10 @@ public class McpServerHolder {
         this.server = McpServer.sync(transport)
                 .serverInfo("geoserver-mcp", Version.current())
                 .instructions("Tools for administering this GeoServer. Names are qualified as workspace:name.")
-                .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
+                .capabilities(McpSchema.ServerCapabilities.builder().tools(false).resources(false, false).build())
                 .tools(tools.stream().map(t -> ToolAdapter.spec(t, settings, json)).toList())
+                .resources(resources.fixed())
+                .resourceTemplates(resources.templates())
                 .jsonMapper(mapper)
                 .requestTimeout(Duration.ofMinutes(5))
                 // tools must run on the request thread: SecurityContextHolder is thread-local
