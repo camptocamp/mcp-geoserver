@@ -127,6 +127,19 @@ public final class Views {
         return m;
     }
 
+    public static Map<String, Object> published(LayerInfo l, boolean created, List<String> warnings) {
+        ResourceInfo r = l.getResource();
+        Map<String, Object> m = layerSummary(l);
+        m.put("store", r.getStore().getWorkspace().getName() + ":" + r.getStore().getName());
+        m.put("nativeName", r.getNativeName());
+        m.put("srs", r.getSRS());
+        m.put("nativeBoundingBox", bbox(r.getNativeBoundingBox()));
+        m.put("defaultStyle", l.getDefaultStyle() == null ? null : l.getDefaultStyle().prefixedName());
+        m.put("created", created);
+        if (!warnings.isEmpty()) m.put("warnings", warnings);
+        return m;
+    }
+
     public static Map<String, Object> style(StyleInfo s) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", s.getName());

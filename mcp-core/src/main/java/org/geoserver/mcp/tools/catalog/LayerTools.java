@@ -10,6 +10,10 @@ import org.geoserver.catalog.ResourceInfo;
 import org.geoserver.catalog.StoreInfo;
 import org.geoserver.catalog.StyleInfo;
 import org.geoserver.catalog.WorkspaceInfo;
+import java.io.IOException;
+import org.geotools.api.feature.type.FeatureType;
+import org.geotools.api.feature.type.GeometryDescriptor;
+import org.geotools.api.feature.type.PropertyDescriptor;
 import org.geotools.feature.NameImpl;
 import org.geoserver.mcp.tool.ToolException;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -31,7 +35,7 @@ public class LayerTools {
     }
 
     public List<GsTool> tools() {
-        return List.of(list(), get(), publish(), update());
+        return List.of(list(), get(), publish(), publishMany(), update());
     }
 
     GsTool list() {
@@ -78,51 +82,154 @@ public class LayerTools {
                         .string("name", "Published layer name, defaults to nativeName", false)
                         .string("title", "Layer title", false)
                         .string("srs", "Declared SRS such as EPSG:3857; forces the declared CRS", false).build())
-                        .description("Publish a layer from an existing store. Computes bounds and looks up the SRS.").build();
+                        .description("Publish a layer from an existing store. Computes bounds and looks up the SRS. Returns a compact summary; gs_get_layer has the attributes.").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string("workspace"));
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string("store"));
+                if (store instanceof DataStoreInfo ds) {
+                    return publishVector(ctx, ds, args.string("nativeName"), args.string("name", null), args.string("title", null), args.string("srs", null), true);
+                }
+                if (!(store instanceof CoverageStoreInfo)) {
+                    throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
+                }
                 CatalogBuilder builder = new CatalogBuilder(catalog);
                 builder.setWorkspace(ws);
                 builder.setStore(store);
-                ResourceInfo resource;
-                if (store instanceof DataStoreInfo) {
-                    String nativeName = args.string("nativeName");
-                    FeatureTypeInfo ft = builder.buildFeatureType(new NameImpl(nativeName));
-                    resource = ft;
-                    ctx.trace().curl("POST", "/rest/workspaces/" + ws.getName() + "/datastores/" + store.getName() + "/featuretypes",
-                            "application/json", "{\"featureType\":{\"name\":\"" + args.string("name", nativeName) + "\",\"nativeName\":\"" + nativeName + "\"}}");
-                } else if (store instanceof CoverageStoreInfo) {
-                    CoverageInfo ci = args.has("nativeName") ? builder.buildCoverage(args.string("nativeName")) : builder.buildCoverage();
-                    resource = ci;
-                    ctx.trace().curl("POST", "/rest/workspaces/" + ws.getName() + "/coveragestores/" + store.getName() + "/coverages",
-                            "application/json", "{\"coverage\":{\"name\":\"" + args.string("name", ci.getNativeName()) + "\",\"nativeName\":\"" + ci.getNativeName() + "\"}}");
-                } else {
-                    throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
-                }
-                if (args.has("name")) resource.setName(args.string("name"));
-                if (args.has("title")) resource.setTitle(args.string("title"));
+                CoverageInfo ci = args.has("nativeName") ? builder.buildCoverage(args.string("nativeName")) : builder.buildCoverage();
+                ctx.trace().curl("POST", "/rest/workspaces/" + ws.getName() + "/coveragestores/" + store.getName() + "/coverages",
+                        "application/json", "{\"coverage\":{\"name\":\"" + args.string("name", ci.getNativeName()) + "\",\"nativeName\":\"" + ci.getNativeName() + "\"}}");
+                if (args.has("name")) ci.setName(args.string("name"));
+                if (args.has("title")) ci.setTitle(args.string("title"));
                 if (args.has("srs")) {
-                    resource.setSRS(args.string("srs"));
-                    resource.setProjectionPolicy(ProjectionPolicy.FORCE_DECLARED);
+                    ci.setSRS(args.string("srs"));
+                    ci.setProjectionPolicy(ProjectionPolicy.FORCE_DECLARED);
                 }
-                if (resource.getSRS() == null && resource instanceof FeatureTypeInfo ft) builder.lookupSRS(ft, true);
-                builder.setupBounds(resource);
-                LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + resource.getName());
-                if (existing != null) {
-                    Map<String, Object> m = Views.layer(existing);
-                    m.put("created", false);
-                    return m;
-                }
-                LayerInfo layer = builder.buildLayer(resource);
-                catalog.add(resource);
+                builder.setupBounds(ci);
+                LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + ci.getName());
+                if (existing != null) return Views.published(existing, false, List.of());
+                LayerInfo layer = builder.buildLayer(ci);
+                catalog.add(ci);
                 catalog.add(layer);
-                Map<String, Object> m = Views.layer(catalog.getLayerByName(ws.getName() + ":" + resource.getName()));
-                m.put("created", true);
+                return Views.published(catalog.getLayerByName(ws.getName() + ":" + ci.getName()), true, List.of());
+            }
+        };
+    }
+
+    static final int MAX_BULK = 50;
+
+    GsTool publishMany() {
+        return new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_publish_layers", Schema.object()
+                        .string("workspace", "Workspace name", true)
+                        .string("store", "Vector store name", true)
+                        .stringArray("names", "Feature type names to publish; see gs_get_store available", false)
+                        .bool("all", "Publish every unpublished feature type of the store", false)
+                        .bool("includeNonSpatial", "Also publish tables without a geometry column, default false", false).build())
+                        .description("Publish up to " + MAX_BULK + " feature types of one store in one call. Each item succeeds or fails on its own; "
+                                + "geometryless tables are skipped unless includeNonSpatial.").build();
+            }
+            public Object call(ToolContext ctx, Args args) throws Exception {
+                WorkspaceInfo ws = Lookups.workspace(catalog, args.string("workspace"));
+                StoreInfo store = Lookups.store(catalog, ws.getName(), args.string("store"));
+                if (!(store instanceof DataStoreInfo ds)) throw new ToolException("gs_publish_layers works on vector stores; use gs_publish_layer");
+                List<String> names = args.strings("names");
+                if (names.isEmpty() && !args.bool("all", false)) throw new ToolException("Pass names or all: true");
+                if (names.isEmpty()) names = StoreTools.available(catalog, ds);
+                if (names.size() > MAX_BULK) throw new ToolException(names.size() + " feature types; publish at most " + MAX_BULK + " per call, pass names");
+                boolean nonSpatial = args.bool("includeNonSpatial", false);
+                List<Map<String, Object>> items = new ArrayList<>();
+                int published = 0, skipped = 0, failed = 0;
+                for (String name : names) {
+                    long start = System.nanoTime();
+                    Map<String, Object> item;
+                    try {
+                        item = publishVector(ctx, ds, name, null, null, null, nonSpatial);
+                        if (Boolean.TRUE.equals(item.get("created"))) published++;
+                    } catch (Skipped e) {
+                        item = new java.util.LinkedHashMap<>(Map.of("name", name, "skipped", true, "warnings", List.of(e.getMessage())));
+                        skipped++;
+                    } catch (Exception e) {
+                        item = new java.util.LinkedHashMap<>(Map.of("name", name, "error", JdbcConnectionCheck.rootMessage(e)));
+                        failed++;
+                    }
+                    item.put("ms", (System.nanoTime() - start) / 1_000_000);
+                    items.add(item);
+                }
+                Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("store", ws.getName() + ":" + ds.getName());
+                m.put("published", published);
+                m.put("skipped", skipped);
+                m.put("failed", failed);
+                m.put("items", items);
                 return m;
             }
         };
+    }
+
+    static class Skipped extends ToolException {
+        Skipped(String message) {
+            super(message);
+        }
+    }
+
+    Map<String, Object> publishVector(ToolContext ctx, DataStoreInfo store, String nativeName, String name, String title, String srs, boolean includeNonSpatial) throws Exception {
+        WorkspaceInfo ws = store.getWorkspace();
+        String layerName = name == null ? nativeName : name;
+        LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + layerName);
+        if (existing != null) return Views.published(existing, false, List.of());
+        ctx.trace().curl("POST", "/rest/workspaces/" + ws.getName() + "/datastores/" + store.getName() + "/featuretypes",
+                "application/json", "{\"featureType\":{\"name\":\"" + layerName + "\",\"nativeName\":\"" + nativeName + "\"}}");
+        CatalogBuilder builder = new CatalogBuilder(catalog);
+        builder.setWorkspace(ws);
+        builder.setStore(store);
+        List<String> warnings = new ArrayList<>();
+        FeatureTypeInfo ft = catalog.getFeatureTypeByDataStore(store, layerName);
+        boolean reused = ft != null;
+        if (reused) {
+            warnings.add("Reused feature type '" + layerName + "' that had no layer");
+        } else {
+            FeatureType schema;
+            try {
+                schema = catalog.getResourcePool().getDataStore(store).getSchema(new NameImpl(nativeName));
+            } catch (IOException e) {
+                throw new ToolException("Feature type '" + nativeName + "' not found in store '" + store.getName() + "': " + e.getMessage());
+            }
+            List<String> geoms = new ArrayList<>();
+            for (PropertyDescriptor d : schema.getDescriptors()) if (d instanceof GeometryDescriptor) geoms.add(d.getName().getLocalPart());
+            if (geoms.isEmpty()) {
+                if (!includeNonSpatial) throw new Skipped("No geometry column; pass includeNonSpatial to publish anyway");
+                warnings.add("No geometry column: WMS cannot draw this layer");
+            } else if (geoms.size() > 1) {
+                warnings.add("Several geometry columns " + geoms + "; GeoServer uses '" + schema.getGeometryDescriptor().getLocalName()
+                        + "' and bounds may mix them; publish a SQL view to pick one");
+            }
+            ft = builder.buildFeatureType(new NameImpl(nativeName));
+            if (name != null) ft.setName(name);
+            if (title != null) ft.setTitle(title);
+            if (srs != null) {
+                ft.setSRS(srs);
+                ft.setProjectionPolicy(ProjectionPolicy.FORCE_DECLARED);
+            } else if (ft.getSRS() == null) {
+                builder.lookupSRS(ft, true);
+            }
+            if (ft.getSRS() == null || "EPSG:404000".equals(ft.getSRS())) warnings.add("No SRS could be determined (" + ft.getSRS() + "); pass srs");
+            try {
+                builder.setupBounds(ft);
+            } catch (Exception e) {
+                warnings.add("Bounds not computed: " + JdbcConnectionCheck.rootMessage(e));
+            }
+        }
+        LayerInfo layer = builder.buildLayer(ft);
+        if (!reused) catalog.add(ft);
+        try {
+            catalog.add(layer);
+        } catch (RuntimeException e) {
+            if (!reused) catalog.remove(ft);
+            throw e;
+        }
+        return Views.published(catalog.getLayerByName(ws.getName() + ":" + layerName), true, warnings);
     }
 
     GsTool update() {

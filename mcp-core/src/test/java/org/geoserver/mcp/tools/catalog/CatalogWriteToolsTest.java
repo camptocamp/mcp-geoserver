@@ -106,7 +106,8 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
                 "name", "BasicPolygonsCopy", "title", "Basic"));
         assertEquals("cite:BasicPolygonsCopy", l.get("name").asText());
         assertEquals("Basic", l.get("title").asText());
-        assertNotNull(l.get("latLonBoundingBox"));
+        assertNotNull(l.get("nativeBoundingBox"));
+        assertNull(l.get("attributes"));
     }
 
     @Test

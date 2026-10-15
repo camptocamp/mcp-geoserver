@@ -8,6 +8,11 @@ import org.geoserver.catalog.CoverageStoreInfo;
 import org.geoserver.catalog.DataStoreInfo;
 import org.geoserver.mcp.tool.ToolException;
 import org.geoserver.mcp.tools.discovery.DiscoveryTools;
+import org.geotools.api.feature.type.GeometryDescriptor;
+import org.geotools.api.feature.type.Name;
+import org.geotools.api.feature.type.PropertyDescriptor;
+import org.geotools.feature.NameImpl;
+import org.geotools.referencing.CRS;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,10 +73,13 @@ public class StoreTools {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_get_store", Schema.object()
                         .string("workspace", "Workspace name", true)
-                        .string("name", "Store name", true).build())
-                        .description("Describe a store: type, connection parameters (secrets masked), published resources").build();
+                        .string("name", "Store name", true)
+                        .stringArray("names", "Vector stores: describe these feature types (geometry columns, types, SRIDs)", false)
+                        .bool("detail", "Vector stores: describe every published and available feature type; at most " + LayerTools.MAX_BULK, false).build())
+                        .description("Describe a store: type, connection parameters (secrets masked), published resources, "
+                                + "available unpublished feature types; names or detail add geometry columns per table").build();
             }
-            public Object call(ToolContext ctx, Args args) {
+            public Object call(ToolContext ctx, Args args) throws Exception {
                 StoreInfo s = Lookups.store(catalog, args.string("workspace"), args.string("name"));
                 String kind = Views.storeKind(s).equals("raster") ? "coveragestores" : "datastores";
                 ctx.trace().curl("GET", "/rest/workspaces/" + s.getWorkspace().getName() + "/" + kind + "/" + s.getName() + ".json", null, null);
@@ -79,9 +87,66 @@ public class StoreTools {
                 List<String> resources = new ArrayList<>();
                 for (ResourceInfo r : catalog.getResourcesByStore(s, ResourceInfo.class)) resources.add(r.getName());
                 m.put("resources", resources);
+                if (!(s instanceof DataStoreInfo ds)) return m;
+                ctx.trace().curl("GET", "/rest/workspaces/" + s.getWorkspace().getName() + "/datastores/" + s.getName() + "/featuretypes.json?list=available", null, null);
+                List<String> available;
+                try {
+                    available = available(catalog, ds);
+                } catch (Exception e) {
+                    m.put("availableError", JdbcConnectionCheck.rootMessage(e));
+                    return m;
+                }
+                m.put("available", available);
+                List<String> names = args.strings("names");
+                if (names.isEmpty() && args.bool("detail", false)) {
+                    names = new ArrayList<>(resources);
+                    names.addAll(available);
+                }
+                if (names.size() > LayerTools.MAX_BULK) throw new ToolException(names.size() + " feature types; pass names, at most " + LayerTools.MAX_BULK);
+                if (!names.isEmpty()) m.put("tables", tables(catalog, ds, names));
                 return m;
             }
         };
+    }
+
+    static List<String> available(Catalog catalog, DataStoreInfo ds) throws java.io.IOException {
+        Set<String> published = new java.util.HashSet<>();
+        for (ResourceInfo r : catalog.getResourcesByStore(ds, ResourceInfo.class)) published.add(r.getNativeName());
+        List<String> out = new ArrayList<>();
+        for (Name n : catalog.getResourcePool().getDataStore(ds).getNames()) if (!published.contains(n.getLocalPart())) out.add(n.getLocalPart());
+        java.util.Collections.sort(out);
+        return out;
+    }
+
+    static List<Map<String, Object>> tables(Catalog catalog, DataStoreInfo ds, List<String> names) throws java.io.IOException {
+        var da = catalog.getResourcePool().getDataStore(ds);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (String name : names) {
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("name", name);
+            t.put("published", catalog.getFeatureTypeByDataStore(ds, name) != null);
+            try {
+                List<Map<String, Object>> geoms = new ArrayList<>();
+                for (PropertyDescriptor d : da.getSchema(new NameImpl(name)).getDescriptors()) {
+                    if (!(d instanceof GeometryDescriptor g)) continue;
+                    Integer srid = null;
+                    try {
+                        srid = g.getCoordinateReferenceSystem() == null ? null : CRS.lookupEpsgCode(g.getCoordinateReferenceSystem(), false);
+                    } catch (Exception ignored) {
+                    }
+                    Map<String, Object> geom = new LinkedHashMap<>();
+                    geom.put("column", g.getLocalName());
+                    geom.put("type", g.getType().getBinding().getSimpleName());
+                    geom.put("srid", srid);
+                    geoms.add(geom);
+                }
+                t.put("geometries", geoms);
+            } catch (Exception e) {
+                t.put("error", JdbcConnectionCheck.rootMessage(e));
+            }
+            out.add(t);
+        }
+        return out;
     }
 
     GsTool create() {
