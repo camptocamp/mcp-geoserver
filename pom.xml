@@ -30,7 +30,7 @@
     <jakarta.servlet.version>6.1.0</jakarta.servlet.version>
     <junit.version>5.11.4</junit.version>
     <mockito.version>5.20.0</mockito.version>
-    <testcontainers.version>1.20.4</testcontainers.version>
+    <testcontainers.version>2.0.5</testcontainers.version>
     <xmlunit.version>1.6</xmlunit.version>
     <jsoup.version>1.23.1</jsoup.version>
     <httpclient5.version>5.4.4</httpclient5.version>
@@ -164,6 +164,13 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <profiles>
+    <profile>
+      <id>it</id>
+      <modules><module>mcp-it</module></modules>
+    </profile>
+  </profiles>
 
   <build>
     <pluginManagement>

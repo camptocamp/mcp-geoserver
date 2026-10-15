@@ -1,0 +1,9 @@
+- id: mcp
+  uri: ${targets.rest}
+  predicates:
+    - Path=${basepath}/mcp,${basepath}/mcp/**
+  filters:
+    - StripBasePath=${basepath}
+    - SharedAuth
+    - SecureHeaders
+    - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE

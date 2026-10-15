@@ -1,0 +1,4 @@
+geoserver:
+  extension:
+    mcp:
+      enabled: true

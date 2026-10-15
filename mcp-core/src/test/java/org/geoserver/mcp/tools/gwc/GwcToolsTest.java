@@ -67,20 +67,22 @@ class GwcToolsTest {
     }
 
     @Test
-    void setTileLayerPostsMergedDocument() throws Exception {
-        String current = "{\"GeoServerLayer\":{\"name\":\"topp:states\",\"enabled\":true,\"mimeFormats\":[\"image/png\"],"
-                + "\"gridSubsets\":[{\"gridSetName\":\"EPSG:900913\"}]}}";
+    void setTileLayerPutsMergedXml() throws Exception {
+        String current = "<GeoServerLayer><enabled>true</enabled><name>topp:states</name>"
+                + "<mimeFormats><string>image/png</string></mimeFormats>"
+                + "<gridSubsets><gridSubset><gridSetName>EPSG:900913</gridSetName></gridSubset></gridSubsets></GeoServerLayer>";
         try (StubHttpServer stub = new StubHttpServer(r -> r.method().equals("GET")
-                ? StubHttpServer.Reply.json(current) : StubHttpServer.Reply.of(200, "text/plain", ""))) {
+                ? StubHttpServer.Reply.of(200, "text/xml", current) : StubHttpServer.Reply.of(200, "text/plain", "layer saved"))) {
             JsonNode r = run(tools(stub.url()), "gs_gwc_set_tile_layer", Map.of(
                     "layer", "topp:states", "enabled", false, "gridsets", List.of("EPSG:4326"), "formats", List.of("image/png", "image/jpeg")));
             assertTrue(r.get("updated").asBoolean());
-            StubHttpServer.Received post = stub.received.get(1);
-            assertEquals("POST", post.method());
-            JsonNode sent = json.readTree(post.body()).get("GeoServerLayer");
-            assertEquals(false, sent.get("enabled").asBoolean());
-            assertEquals("EPSG:4326", sent.get("gridSubsets").get(0).get("gridSetName").asText());
-            assertEquals(2, sent.get("mimeFormats").size());
+            StubHttpServer.Received put = stub.received.get(1);
+            assertEquals("PUT", put.method());
+            assertEquals("/geoserver/gwc/rest/layers/topp:states.xml", put.path());
+            assertTrue(put.body().contains("<enabled>false</enabled>"), put.body());
+            assertTrue(put.body().contains("<gridSetName>EPSG:4326</gridSetName>"), put.body());
+            assertTrue(put.body().contains("<string>image/jpeg</string>"), put.body());
+            assertEquals(2, r.get("mimeFormats").size());
         }
     }
 

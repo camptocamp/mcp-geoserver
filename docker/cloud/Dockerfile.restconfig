@@ -1,0 +1,9 @@
+FROM geoservercloud/geoserver-cloud-rest:3.0.1
+ARG LIBS=libs
+COPY ${LIBS}/*.jar /tmp/mcp-libs/
+RUN cd /opt/app/bin && for f in /tmp/mcp-libs/*.jar; do \
+      j="BOOT-INF/lib/$(basename "$f")"; \
+      mv "$f" "$j"; \
+      grep -q "\"$j\"" BOOT-INF/classpath.idx || printf -- '- "%s"\n' "$j" >> BOOT-INF/classpath.idx; \
+    done && rmdir /tmp/mcp-libs
+ENV AOT_MODE=off

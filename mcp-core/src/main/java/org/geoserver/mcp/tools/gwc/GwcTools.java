@@ -5,17 +5,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.io.ByteArrayInputStream;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import org.geoserver.mcp.http.GeoServerHttpClient;
 import org.geoserver.mcp.tool.Args;
 import org.geoserver.mcp.tool.GsTool;
 import org.geoserver.mcp.tool.Schema;
 import org.geoserver.mcp.tool.ToolContext;
 import org.geoserver.mcp.tool.ToolException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 public class GwcTools {
     private final GeoServerHttpClient http;
@@ -111,27 +120,54 @@ public class GwcTools {
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 String layer = args.string("layer");
-                String path = "/gwc/rest/layers/" + layer + ".json";
-                JsonNode current = getJson(ctx, path);
-                ObjectNode doc = (ObjectNode) (current.has("GeoServerLayer") ? current.get("GeoServerLayer") : current);
-                if (args.has("enabled")) doc.put("enabled", args.bool("enabled", true));
+                String path = "/gwc/rest/layers/" + layer + ".xml";
+                GeoServerHttpClient.Response current = http.get(ctx, path);
+                if (current.status() != 200) throw new ToolException("GWC " + path + " returned HTTP " + current.status() + ": " + current.text().trim());
+                Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(current.body()));
+                Element root = doc.getDocumentElement();
+                if (args.has("enabled")) child(root, "enabled").setTextContent(String.valueOf(args.bool("enabled", true)));
                 if (args.has("formats")) {
-                    ArrayNode f = doc.putArray("mimeFormats");
-                    args.strings("formats").forEach(f::add);
+                    Element f = replaceChild(doc, root, "mimeFormats");
+                    for (String m : args.strings("formats")) f.appendChild(doc.createElement("string")).setTextContent(m);
                 }
                 if (args.has("gridsets")) {
-                    ArrayNode g = doc.putArray("gridSubsets");
-                    for (String name : args.strings("gridsets")) g.addObject().put("gridSetName", name);
+                    Element g = replaceChild(doc, root, "gridSubsets");
+                    for (String name : args.strings("gridsets")) {
+                        Element sub = (Element) g.appendChild(doc.createElement("gridSubset"));
+                        sub.appendChild(doc.createElement("gridSetName")).setTextContent(name);
+                    }
                 }
-                ObjectNode wrapper = json.createObjectNode();
-                wrapper.set("GeoServerLayer", doc);
-                byte[] body = json.writeValueAsBytes(wrapper);
-                expectOk(http.send(ctx, "POST", path, "application/json", body), "Tile layer update");
-                Map<String, Object> m = new LinkedHashMap<>(tileLayerView(wrapper));
+                StringWriter xml = new StringWriter();
+                TransformerFactory.newInstance().newTransformer().transform(new DOMSource(doc), new StreamResult(xml));
+                expectOk(http.send(ctx, "PUT", path, "text/xml", xml.toString().getBytes(StandardCharsets.UTF_8)), "Tile layer update");
+                ObjectNode view = json.createObjectNode();
+                view.put("name", root.getElementsByTagName("name").item(0).getTextContent());
+                view.put("enabled", Boolean.parseBoolean(child(root, "enabled").getTextContent()));
+                ArrayNode formats = view.putArray("mimeFormats");
+                NodeList strings = child(root, "mimeFormats").getElementsByTagName("string");
+                for (int i = 0; i < strings.getLength(); i++) formats.add(strings.item(i).getTextContent());
+                ArrayNode subsets = view.putArray("gridSubsets");
+                NodeList names = child(root, "gridSubsets").getElementsByTagName("gridSetName");
+                for (int i = 0; i < names.getLength(); i++) subsets.addObject().put("gridSetName", names.item(i).getTextContent());
+                Map<String, Object> m = new LinkedHashMap<>(tileLayerView(view));
                 m.put("updated", true);
                 return m;
             }
         };
+    }
+
+    static Element child(Element parent, String name) {
+        NodeList n = parent.getElementsByTagName(name);
+        if (n.getLength() == 0) throw new ToolException("Tile layer document has no <" + name + ">");
+        return (Element) n.item(0);
+    }
+
+    static Element replaceChild(Document doc, Element root, String name) {
+        Element fresh = doc.createElement(name);
+        NodeList old = root.getElementsByTagName(name);
+        if (old.getLength() > 0) root.replaceChild(fresh, old.item(0));
+        else root.appendChild(fresh);
+        return fresh;
     }
 
     GsTool listGridsets() {
