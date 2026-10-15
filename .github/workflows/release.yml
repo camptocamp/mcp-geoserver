@@ -18,13 +18,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml', '.mvn/wrapper/maven-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-m2-
 
       - name: Set version from tag
-        run: ./mvnw -B -q versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
+        run: ./mvnw -B -ntp -q versions:set -DnewVersion="${GITHUB_REF_NAME#v}" -DgenerateBackupPoms=false
 
       - name: Build and test
-        run: ./mvnw -B verify
+        run: ./mvnw -B -ntp verify
 
       - name: Snyk dependency monitoring
         uses: snyk/actions/maven-3-jdk-17@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0

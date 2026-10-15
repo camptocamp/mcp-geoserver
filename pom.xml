@@ -37,6 +37,7 @@
     <jacoco.version>0.8.15</jacoco.version>
     <sonar.projectKey>camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b</sonar.projectKey>
     <sonar.projectName>mcp-geoserver</sonar.projectName>
+    <sonar.host.url>https://sast.camptocamp.net</sonar.host.url>
   </properties>
 
   <repositories>
