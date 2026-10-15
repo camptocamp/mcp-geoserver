@@ -3,6 +3,10 @@
 [![Latest release](https://img.shields.io/github/v/release/camptocamp/mcp-geoserver?color=brightgreen&label=release)](https://github.com/camptocamp/mcp-geoserver/releases/latest)
 [![License: GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 [![Tests](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sast.camptocamp.net/api/project_badges/measure?project=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b&metric=alert_status&token=sqb_a32cf7a16c1d4d9c8db4bd704579c8d2414a80b8)](https://sast.camptocamp.net/dashboard?id=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b)
+[![Coverage](https://sast.camptocamp.net/api/project_badges/measure?project=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b&metric=coverage&token=sqb_a32cf7a16c1d4d9c8db4bd704579c8d2414a80b8)](https://sast.camptocamp.net/dashboard?id=camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b)
+[![Security policy](https://img.shields.io/badge/security-policy-informational)](SECURITY.md)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](.github/dependabot.yml)
 
 An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles or bring them over from QGIS, query features, look at rendered maps, seed tile caches.
 
@@ -160,10 +164,7 @@ Maintainers: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow se
 
 ## Contributing
 
-Issues and pull requests are welcome.
-
-- Bugs and ideas: open an [issue](https://github.com/camptocamp/mcp-geoserver/issues). For a bug, give the GeoServer version, the tool call and the result or error.
-- Code: fork, branch, then open a pull request against `master`. Read `AGENTS.md` first for the layout and conventions. `./mvnw -q verify` must pass; CI runs it on every pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md). To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## License
 
