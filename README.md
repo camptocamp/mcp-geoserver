@@ -1,12 +1,15 @@
 # <img src="https://raw.githubusercontent.com/geoserver/geoserver/main/src/web/core/src/main/java/org/geoserver/web/img/logo.png" alt="GeoServer" height="48" align="absmiddle"> GeoServer MCP
 
-Not built yet: design and plan stage. An MCP (Model Context Protocol) server that runs inside GeoServer. Once built, point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles, query features, look at rendered maps, seed tile caches.
+An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles, query features, look at rendered maps, seed tile caches.
 
 Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
 ## Status
 
-Work in progress: no code yet.
+| Target | State |
+| --- | --- |
+| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 30 tools, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
+| GeoServer Cloud 3.0.1 | Files exist in `docker/cloud`; not built or run yet. |
 
 ## Quick start (vanilla GeoServer 3.0.1 in Docker)
 
@@ -35,7 +38,7 @@ When verbose is on, every tool result carries a second block titled `Equivalent 
 
 ## Tools
 
-All tools are prefixed `gs_` and accept an optional `verbose` boolean. `AGENTS.md` will carry the full list with arguments once code lands.
+All tools are prefixed `gs_` and accept an optional `verbose` boolean. `AGENTS.md` lists every tool with its arguments.
 
 Read
 - `gs_status`: versions, proxy base URL, counts
@@ -62,6 +65,21 @@ GeoWebCache (via the GWC REST API)
 - `gs_gwc_list_tile_layers`, `gs_gwc_get_tile_layer`, `gs_gwc_set_tile_layer`
 - `gs_gwc_list_gridsets`
 - `gs_gwc_seed`, `gs_gwc_list_tasks`, `gs_gwc_kill_tasks`
+
+## Example session
+
+```
+> Publish /data/ortho.tif as ortho:2026 with a 60% opacity style and show me the result.
+```
+
+Claude calls `gs_create_workspace`, `gs_create_store` (type GeoTIFF), `gs_publish_layer`, `gs_put_style`, `gs_update_layer`, then `gs_get_map` and looks at the PNG. With verbose on, each step also prints the curl equivalent.
+
+## Security notes
+
+- The default allowed role is `ROLE_ADMINISTRATOR`.
+- Use HTTP Basic over TLS in production.
+- The endpoint is off by default.
+- `internalBaseUrl` is called with the caller's credentials.
 
 ## Plugins
 

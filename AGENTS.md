@@ -72,6 +72,16 @@ GeoWebCache (via GWC REST over HTTP)
 - `gs_gwc_seed(layer, gridset, zoomStart, zoomStop, format, operation?, threads?, bbox[]?)`
 - `gs_gwc_list_tasks(layer?)`, `gs_gwc_kill_tasks(layer?, which?)`
 
+## Gotchas
+
+- `tools/call` runs on the servlet thread (`immediateExecution(true)`), so `SecurityContextHolder` and the secured catalog work. Do not remove that flag.
+- `gs_get_map` and `gs_gwc_*` go over HTTP even on vanilla, with the caller's `Authorization` header forwarded. Base URL order: `mcp.internalBaseUrl`, proxy base URL, request URL.
+- `gs_gwc_set_tile_layer` sends GWC's XML representation; GWC 2.0.1 rejects multi-element JSON updates. `gs_gwc_seed` uses JSON.
+- The MCP stateless transport answers 400 unless `Accept` contains both `application/json` and `text/event-stream`.
+- GeoServer 3.0.1 ships Jackson 3; the zip carries its own Jackson 2.22 core and databind.
+- Cloud image: jars must be appended to `BOOT-INF/classpath.idx`, and `AOT_MODE=off`.
+- The GeoServer test harness is JUnit 4; new tool tests extend `McpToolTestSupport`.
+
 ## Version facts (verified 2026-09-25)
 
 GeoServer 3.0.1 = Spring 7.0.8, Jakarta Servlet 6.1, Wicket 10.10, GeoTools 35.1, GWC 2.0.1. GeoServer Cloud 3.0.1 = same GeoServer, Spring Boot 4.0.7, artifacts not published. MCP Java SDK 2.0.1, Jakarta-only servlet transport, stateless transport needs no async servlet support.
