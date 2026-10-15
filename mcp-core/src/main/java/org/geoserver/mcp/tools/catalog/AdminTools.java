@@ -23,8 +23,11 @@ import org.geoserver.mcp.tool.Schema;
 import org.geoserver.mcp.tool.ToolContext;
 import org.geoserver.platform.GeoServerExtensions;
 import org.geoserver.platform.ModuleStatus;
+import org.geoserver.mcp.tool.Keys;
 
 public class AdminTools {
+    private static final String RECURSE = "recurse";
+
     protected final Catalog catalog;
     protected final GeoServer geoServer;
 
@@ -66,64 +69,68 @@ public class AdminTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_delete", Schema.object()
-                        .enumeration("kind", "What to delete", true, "workspace", "store", "layer", "style", "layergroup")
-                        .string("workspace", "Workspace of the object (required for store; optional for style and layergroup; ignored for layer, use workspace:name)", false)
+                        .enumeration("kind", "What to delete", true, Keys.WORKSPACE, Keys.STORE, Keys.LAYER, Keys.STYLE, "layergroup")
+                        .string(Keys.WORKSPACE, "Workspace of the object (required for store; optional for style and layergroup; ignored for layer, use workspace:name)", false)
                         .string("name", "Object name", true)
-                        .bool("recurse", "Also delete everything that depends on it", false).build())
+                        .bool(RECURSE, "Also delete everything that depends on it", false).build())
                         .description("Delete a catalog object. Without recurse, refuses if other objects still reference it.").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String kind = args.string("kind");
-                String ws = args.string("workspace", null);
+                String ws = args.string(Keys.WORKSPACE, null);
                 String name = args.string("name");
-                boolean recurse = args.bool("recurse", false);
+                boolean recurse = args.bool(RECURSE, false);
                 CatalogInfo target = switch (kind) {
-                    case "workspace" -> Lookups.workspace(catalog, name);
-                    case "store" -> Lookups.store(catalog, args.string("workspace"), name);
-                    case "layer" -> Lookups.layer(catalog, name);
-                    case "style" -> Lookups.style(catalog, ws, name);
+                    case Keys.WORKSPACE -> Lookups.workspace(catalog, name);
+                    case Keys.STORE -> Lookups.store(catalog, args.string(Keys.WORKSPACE), name);
+                    case Keys.LAYER -> Lookups.layer(catalog, name);
+                    case Keys.STYLE -> Lookups.style(catalog, ws, name);
                     case "layergroup" -> Lookups.layerGroup(catalog, ws, name);
                     default -> throw new ToolException("Unknown kind '" + kind + "'");
                 };
                 ctx.trace().curl("DELETE", restPath(kind, ws, name, target) + "?recurse=" + recurse, null, null);
                 try {
-                    if (recurse) {
-                        target.accept(new CascadeDeleteVisitor(catalog));
-                    } else if (target instanceof LayerInfo layer) {
-                        ResourceInfo resource = layer.getResource();
-                        catalog.remove(layer);
-                        catalog.remove(resource);
-                    } else if (target instanceof StoreInfo store) {
-                        if (!catalog.getResourcesByStore(store, ResourceInfo.class).isEmpty()) {
-                            throw new ToolException("Store '" + store.getName() + "' still has published resources; pass recurse=true");
-                        }
-                        catalog.remove(store);
-                    } else if (target instanceof WorkspaceInfo workspace) {
-                        NamespaceInfo ns = catalog.getNamespaceByPrefix(workspace.getName());
-                        catalog.remove(workspace);
-                        if (ns != null) catalog.remove(ns);
-                    } else if (target instanceof StyleInfo style) {
-                        catalog.remove(style);
-                    } else if (target instanceof LayerGroupInfo group) {
-                        catalog.remove(group);
-                    }
+                    remove(target, recurse);
                 } catch (ToolException e) {
                     throw e;
                 } catch (RuntimeException e) {
                     throw new ToolException("Cannot delete " + kind + " '" + name + "': " + e.getMessage() + ". Pass recurse=true to cascade.");
                 }
-                return Map.of("deleted", true, "kind", kind, "name", name, "recurse", recurse);
+                return Map.of("deleted", true, "kind", kind, "name", name, RECURSE, recurse);
             }
         };
     }
 
+    void remove(CatalogInfo target, boolean recurse) {
+        if (recurse) {
+            target.accept(new CascadeDeleteVisitor(catalog));
+        } else if (target instanceof LayerInfo layer) {
+            ResourceInfo resource = layer.getResource();
+            catalog.remove(layer);
+            catalog.remove(resource);
+        } else if (target instanceof StoreInfo store) {
+            if (!catalog.getResourcesByStore(store, ResourceInfo.class).isEmpty()) {
+                throw new ToolException("Store '" + store.getName() + "' still has published resources; pass recurse=true");
+            }
+            catalog.remove(store);
+        } else if (target instanceof WorkspaceInfo workspace) {
+            NamespaceInfo ns = catalog.getNamespaceByPrefix(workspace.getName());
+            catalog.remove(workspace);
+            if (ns != null) catalog.remove(ns);
+        } else if (target instanceof StyleInfo style) {
+            catalog.remove(style);
+        } else if (target instanceof LayerGroupInfo group) {
+            catalog.remove(group);
+        }
+    }
+
     static String restPath(String kind, String ws, String name, CatalogInfo target) {
         return switch (kind) {
-            case "workspace" -> "/rest/workspaces/" + name;
-            case "store" -> "/rest/workspaces/" + ws + "/" + (target instanceof org.geoserver.catalog.CoverageStoreInfo ? "coveragestores/" : "datastores/") + name;
-            case "layer" -> "/rest/layers/" + name;
-            case "style" -> ws == null ? "/rest/styles/" + name : "/rest/workspaces/" + ws + "/styles/" + name;
-            default -> ws == null ? "/rest/layergroups/" + name : "/rest/workspaces/" + ws + "/layergroups/" + name;
+            case Keys.WORKSPACE -> Keys.REST_WORKSPACES + name;
+            case Keys.STORE -> Keys.REST_WORKSPACES + ws + "/" + (target instanceof org.geoserver.catalog.CoverageStoreInfo ? "coveragestores/" : "datastores/") + name;
+            case Keys.LAYER -> "/rest/layers/" + name;
+            case Keys.STYLE -> ws == null ? "/rest/styles/" + name : Keys.REST_WORKSPACES + ws + "/styles/" + name;
+            default -> ws == null ? "/rest/layergroups/" + name : Keys.REST_WORKSPACES + ws + "/layergroups/" + name;
         };
     }
 

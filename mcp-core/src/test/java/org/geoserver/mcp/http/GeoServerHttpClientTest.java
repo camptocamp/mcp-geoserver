@@ -1,6 +1,7 @@
 package org.geoserver.mcp.http;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -53,5 +54,18 @@ class GeoServerHttpClientTest {
             assertEquals("/geoserver/rest/about/version.json", stub.received.get(0).path());
             assertTrue(ctx.trace().lines().get(0).contains("'/rest/about/version.json'"), ctx.trace().lines().get(0));
         }
+    }
+
+    @Test
+    void responseComparesBody() {
+        GeoServerHttpClient.Response r = new GeoServerHttpClient.Response(200, "text/plain", new byte[] {65});
+        assertEquals(r, new GeoServerHttpClient.Response(200, "text/plain", new byte[] {65}));
+        assertEquals(r.hashCode(), new GeoServerHttpClient.Response(200, "text/plain", new byte[] {65}).hashCode());
+        assertNotEquals(r, new GeoServerHttpClient.Response(404, "text/plain", new byte[] {65}));
+        assertNotEquals(r, new GeoServerHttpClient.Response(200, "text/html", new byte[] {65}));
+        assertNotEquals(r, new GeoServerHttpClient.Response(200, "text/plain", new byte[] {66}));
+        assertNotEquals(null, r);
+        assertTrue(r.toString().contains("body=1 bytes"));
+        assertTrue(new GeoServerHttpClient.Response(204, null, null).toString().contains("body=null"));
     }
 }

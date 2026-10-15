@@ -38,6 +38,11 @@
     <sonar.projectKey>camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b</sonar.projectKey>
     <sonar.projectName>mcp-geoserver</sonar.projectName>
     <sonar.host.url>https://sast.camptocamp.net</sonar.host.url>
+    <sonar.issue.ignore.multicriteria>wicketDepth,toolContract</sonar.issue.ignore.multicriteria>
+    <sonar.issue.ignore.multicriteria.wicketDepth.ruleKey>java:S110</sonar.issue.ignore.multicriteria.wicketDepth.ruleKey>
+    <sonar.issue.ignore.multicriteria.wicketDepth.resourceKey>**/web/**/*.java</sonar.issue.ignore.multicriteria.wicketDepth.resourceKey>
+    <sonar.issue.ignore.multicriteria.toolContract.ruleKey>java:S112</sonar.issue.ignore.multicriteria.toolContract.ruleKey>
+    <sonar.issue.ignore.multicriteria.toolContract.resourceKey>**/tool/GsTool.java</sonar.issue.ignore.multicriteria.toolContract.resourceKey>
   </properties>
 
   <repositories>

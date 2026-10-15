@@ -13,20 +13,20 @@ public final class Lookups {
 
     public static WorkspaceInfo workspace(Catalog catalog, String name) {
         WorkspaceInfo ws = catalog.getWorkspaceByName(name);
-        if (ws == null) throw new ToolException("Workspace '" + name + "' not found");
+        if (ws == null) throw notFound("Workspace", name);
         return ws;
     }
 
     public static StoreInfo store(Catalog catalog, String workspace, String name) {
         WorkspaceInfo ws = workspace(catalog, workspace);
         StoreInfo store = catalog.getStoreByName(ws, name, StoreInfo.class);
-        if (store == null) throw new ToolException("Store '" + workspace + ":" + name + "' not found");
+        if (store == null) throw notFound("Store", workspace + ":" + name);
         return store;
     }
 
     public static LayerInfo layer(Catalog catalog, String name) {
         LayerInfo layer = catalog.getLayerByName(name);
-        if (layer == null) throw new ToolException("Layer '" + name + "' not found");
+        if (layer == null) throw notFound("Layer", name);
         return layer;
     }
 
@@ -34,7 +34,7 @@ public final class Lookups {
         StyleInfo style = workspace == null || workspace.isBlank()
                 ? catalog.getStyleByName(name)
                 : catalog.getStyleByName(workspace(catalog, workspace), name);
-        if (style == null) throw new ToolException("Style '" + qualified(workspace, name) + "' not found");
+        if (style == null) throw notFound("Style", qualified(workspace, name));
         return style;
     }
 
@@ -42,11 +42,15 @@ public final class Lookups {
         LayerGroupInfo lg = workspace == null || workspace.isBlank()
                 ? catalog.getLayerGroupByName(name)
                 : catalog.getLayerGroupByName(workspace(catalog, workspace), name);
-        if (lg == null) throw new ToolException("Layer group '" + qualified(workspace, name) + "' not found");
+        if (lg == null) throw notFound("Layer group", qualified(workspace, name));
         return lg;
     }
 
     public static String qualified(String workspace, String name) {
         return workspace == null || workspace.isBlank() ? name : workspace + ":" + name;
+    }
+
+    private static ToolException notFound(String kind, String name) {
+        return new ToolException(kind + " '" + name + "' not found");
     }
 }

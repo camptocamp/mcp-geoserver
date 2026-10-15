@@ -10,6 +10,7 @@ import org.geoserver.mcp.tool.Args;
 import org.geoserver.mcp.tool.GsTool;
 import org.geoserver.mcp.tool.Schema;
 import org.geoserver.mcp.tool.ToolContext;
+import org.geoserver.mcp.tool.Keys;
 
 public class WorkspaceTools {
     protected final Catalog catalog;
@@ -40,12 +41,12 @@ public class WorkspaceTools {
     GsTool get() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_get_workspace", Schema.object().string("name", "Workspace name", true).build())
+                return McpSchema.Tool.builder("gs_get_workspace", Schema.object().string("name", Keys.DESC_WORKSPACE_NAME, true).build())
                         .description("Describe one workspace: namespace, stores, layer count").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String name = args.string("name");
-                ctx.trace().curl("GET", "/rest/workspaces/" + name + ".json", null, null);
+                ctx.trace().curl("GET", Keys.REST_WORKSPACES + name + Keys.JSON_EXT, null, null);
                 WorkspaceInfo ws = Lookups.workspace(catalog, name);
                 Map<String, Object> m = Views.workspace(ws, catalog);
                 List<String> stores = new ArrayList<>();
@@ -64,23 +65,23 @@ public class WorkspaceTools {
                 return McpSchema.Tool.builder("gs_create_workspace", Schema.object()
                         .string("name", "Workspace name (also the namespace prefix)", true)
                         .string("namespaceUri", "Namespace URI, defaults to http://<name>", false)
-                        .bool("isolated", "Isolated workspace", false).build())
+                        .bool(Keys.ISOLATED, "Isolated workspace", false).build())
                         .description("Create a workspace and its namespace. Returns the existing one with created=false if it already exists.").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String name = args.string("name");
                 String uri = args.string("namespaceUri", "http://" + name);
-                ctx.trace().curl("POST", "/rest/workspaces", "application/json",
-                        "{\"workspace\":{\"name\":\"" + name + "\",\"isolated\":" + args.bool("isolated", false) + "}}");
+                ctx.trace().curl("POST", "/rest/workspaces", Keys.APPLICATION_JSON,
+                        "{\"workspace\":{\"name\":\"" + name + "\",\"isolated\":" + args.bool(Keys.ISOLATED, false) + "}}");
                 WorkspaceInfo existing = catalog.getWorkspaceByName(name);
                 if (existing != null) {
                     Map<String, Object> m = Views.workspace(existing, catalog);
-                    m.put("created", false);
+                    m.put(Keys.CREATED, false);
                     return m;
                 }
                 WorkspaceInfo ws = catalog.getFactory().createWorkspace();
                 ws.setName(name);
-                ws.setIsolated(args.bool("isolated", false));
+                ws.setIsolated(args.bool(Keys.ISOLATED, false));
                 org.geoserver.catalog.NamespaceInfo ns = catalog.getFactory().createNamespace();
                 ns.setPrefix(name);
                 ns.setURI(uri);
@@ -88,7 +89,7 @@ public class WorkspaceTools {
                 catalog.add(ws);
                 catalog.add(ns);
                 Map<String, Object> m = Views.workspace(ws, catalog);
-                m.put("created", true);
+                m.put(Keys.CREATED, true);
                 return m;
             }
         };

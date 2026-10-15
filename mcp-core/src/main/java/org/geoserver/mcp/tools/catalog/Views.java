@@ -27,6 +27,7 @@ import org.geoserver.mcp.tool.ToolException;
 import org.geoserver.platform.GeoServerExtensions;
 import org.geoserver.security.GeoServerSecurityManager;
 import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.geoserver.mcp.tool.Keys;
 
 public final class Views {
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -36,7 +37,7 @@ public final class Views {
     public static Map<String, Object> workspace(WorkspaceInfo ws, Catalog catalog) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", ws.getName());
-        m.put("isolated", ws.isIsolated());
+        m.put(Keys.ISOLATED, ws.isIsolated());
         WorkspaceInfo dflt = catalog.getDefaultWorkspace();
         m.put("default", dflt != null && dflt.getName().equals(ws.getName()));
         NamespaceInfo ns = catalog.getNamespaceByPrefix(ws.getName());
@@ -45,8 +46,8 @@ public final class Views {
     }
 
     public static String storeKind(StoreInfo s) {
-        if (s instanceof DataStoreInfo) return "vector";
-        if (s instanceof CoverageStoreInfo) return "raster";
+        if (s instanceof DataStoreInfo) return Keys.VECTOR;
+        if (s instanceof CoverageStoreInfo) return Keys.RASTER;
         if (s instanceof WMTSStoreInfo) return "wmts";
         if (s instanceof WMSStoreInfo) return "wms";
         return "unknown";
@@ -54,11 +55,11 @@ public final class Views {
 
     public static Map<String, Object> store(StoreInfo s) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("workspace", s.getWorkspace().getName());
+        m.put(Keys.WORKSPACE, s.getWorkspace().getName());
         m.put("name", s.getName());
         m.put("kind", storeKind(s));
         m.put("type", s.getType());
-        m.put("enabled", s.isEnabled());
+        m.put(Keys.ENABLED, s.isEnabled());
         if (s instanceof CoverageStoreInfo c) m.put("url", c.getURL());
         Map<String, Object> params = new LinkedHashMap<>();
         Set<String> secrets = secretParams(s);
@@ -88,27 +89,27 @@ public final class Views {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", l.prefixedName());
         m.put("type", layerType(l));
-        m.put("title", l.getResource().getTitle());
-        m.put("enabled", l.isEnabled());
+        m.put(Keys.TITLE, l.getResource().getTitle());
+        m.put(Keys.ENABLED, l.isEnabled());
         return m;
     }
 
     public static Map<String, Object> layer(LayerInfo l) {
         ResourceInfo r = l.getResource();
         Map<String, Object> m = layerSummary(l);
-        m.put("workspace", r.getStore().getWorkspace().getName());
-        m.put("store", r.getStore().getName());
-        m.put("nativeName", r.getNativeName());
-        m.put("abstract", r.getAbstract());
+        m.put(Keys.WORKSPACE, r.getStore().getWorkspace().getName());
+        m.put(Keys.STORE, r.getStore().getName());
+        m.put(Keys.NATIVE_NAME, r.getNativeName());
+        m.put(Keys.ABSTRACT, r.getAbstract());
         m.put("srs", r.getSRS());
         m.put("projectionPolicy", String.valueOf(r.getProjectionPolicy()));
-        m.put("nativeBoundingBox", bbox(r.getNativeBoundingBox()));
-        m.put("latLonBoundingBox", bbox(r.getLatLonBoundingBox()));
-        m.put("defaultStyle", l.getDefaultStyle() == null ? null : l.getDefaultStyle().prefixedName());
+        putBbox(m, "nativeBoundingBox", r.getNativeBoundingBox());
+        putBbox(m, "latLonBoundingBox", r.getLatLonBoundingBox());
+        m.put(Keys.DEFAULT_STYLE, l.getDefaultStyle() == null ? null : l.getDefaultStyle().prefixedName());
         List<String> styles = new ArrayList<>();
         for (StyleInfo s : l.getStyles()) styles.add(s.prefixedName());
-        m.put("styles", styles);
-        m.put("advertised", l.isAdvertised());
+        m.put(Keys.STYLES, styles);
+        m.put(Keys.ADVERTISED, l.isAdvertised());
         if (r instanceof FeatureTypeInfo ft) {
             List<Map<String, Object>> attrs = new ArrayList<>();
             try {
@@ -130,12 +131,12 @@ public final class Views {
     public static Map<String, Object> published(LayerInfo l, boolean created, List<String> warnings) {
         ResourceInfo r = l.getResource();
         Map<String, Object> m = layerSummary(l);
-        m.put("store", r.getStore().getWorkspace().getName() + ":" + r.getStore().getName());
-        m.put("nativeName", r.getNativeName());
+        m.put(Keys.STORE, r.getStore().getWorkspace().getName() + ":" + r.getStore().getName());
+        m.put(Keys.NATIVE_NAME, r.getNativeName());
         m.put("srs", r.getSRS());
-        m.put("nativeBoundingBox", bbox(r.getNativeBoundingBox()));
-        m.put("defaultStyle", l.getDefaultStyle() == null ? null : l.getDefaultStyle().prefixedName());
-        m.put("created", created);
+        putBbox(m, "nativeBoundingBox", r.getNativeBoundingBox());
+        m.put(Keys.DEFAULT_STYLE, l.getDefaultStyle() == null ? null : l.getDefaultStyle().prefixedName());
+        m.put(Keys.CREATED, created);
         if (!warnings.isEmpty()) m.put("warnings", warnings);
         return m;
     }
@@ -143,8 +144,8 @@ public final class Views {
     public static Map<String, Object> style(StyleInfo s) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", s.getName());
-        m.put("workspace", s.getWorkspace() == null ? null : s.getWorkspace().getName());
-        m.put("format", s.getFormat());
+        m.put(Keys.WORKSPACE, s.getWorkspace() == null ? null : s.getWorkspace().getName());
+        m.put(Keys.FORMAT, s.getFormat());
         m.put("formatVersion", s.getFormatVersion() == null ? null : s.getFormatVersion().toString());
         m.put("filename", s.getFilename());
         return m;
@@ -153,25 +154,28 @@ public final class Views {
     public static Map<String, Object> layerGroup(LayerGroupInfo g) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("name", g.getName());
-        m.put("workspace", g.getWorkspace() == null ? null : g.getWorkspace().getName());
+        m.put(Keys.WORKSPACE, g.getWorkspace() == null ? null : g.getWorkspace().getName());
         m.put("mode", String.valueOf(g.getMode()));
-        m.put("title", g.getTitle());
+        m.put(Keys.TITLE, g.getTitle());
         List<Map<String, Object>> layers = new ArrayList<>();
         for (int i = 0; i < g.getLayers().size(); i++) {
             PublishedInfo p = g.getLayers().get(i);
             StyleInfo s = i < g.getStyles().size() ? g.getStyles().get(i) : null;
             Map<String, Object> e = new LinkedHashMap<>();
             e.put("name", p == null ? null : p.prefixedName());
-            e.put("style", s == null ? null : s.prefixedName());
+            e.put(Keys.STYLE, s == null ? null : s.prefixedName());
             layers.add(e);
         }
-        m.put("layers", layers);
-        m.put("bounds", bbox(g.getBounds()));
+        m.put(Keys.LAYERS, layers);
+        putBbox(m, "bounds", g.getBounds());
         return m;
     }
 
+    static void putBbox(Map<String, Object> m, String key, ReferencedEnvelope e) {
+        m.put(key, e == null ? null : bbox(e));
+    }
+
     public static Map<String, Object> bbox(ReferencedEnvelope e) {
-        if (e == null) return null;
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("minx", e.getMinX());
         m.put("miny", e.getMinY());

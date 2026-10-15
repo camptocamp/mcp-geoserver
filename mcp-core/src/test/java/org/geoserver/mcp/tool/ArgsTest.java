@@ -20,8 +20,10 @@ class ArgsTest {
 
     @Test
     void requiredStringRejectsMissingAndBlank() {
-        assertThrows(ToolException.class, () -> new Args(Map.of()).string("x"));
-        assertThrows(ToolException.class, () -> new Args(Map.of("x", " ")).string("x"));
+        Args a1 = new Args(Map.of());
+        assertThrows(ToolException.class, () -> a1.string("x"));
+        Args a2 = new Args(Map.of("x", " "));
+        assertThrows(ToolException.class, () -> a2.string("x"));
         assertEquals("v", new Args(Map.of("x", "v")).string("x"));
     }
 
@@ -36,7 +38,8 @@ class ArgsTest {
         assertEquals(7, new Args(Map.of()).integer("x", 7));
         assertEquals(3, new Args(Map.of("x", 3.9)).integer("x", 0));
         assertEquals(12, new Args(Map.of("x", "12")).integer("x", 0));
-        assertThrows(ToolException.class, () -> new Args(Map.of("x", "twelve")).integer("x", 0));
+        Args a3 = new Args(Map.of("x", "twelve"));
+        assertThrows(ToolException.class, () -> a3.integer("x", 0));
     }
 
     @Test
@@ -58,13 +61,15 @@ class ArgsTest {
     void numbersParsesMixedListAndRejectsScalar() {
         assertEquals(List.of(), new Args(Map.of()).numbers("x"));
         assertEquals(List.of(1.0, 2.5), new Args(Map.of("x", List.of(1, "2.5"))).numbers("x"));
-        assertThrows(ToolException.class, () -> new Args(Map.of("x", 4)).numbers("x"));
+        Args a4 = new Args(Map.of("x", 4));
+        assertThrows(ToolException.class, () -> a4.numbers("x"));
     }
 
     @Test
     void mapRejectsNonObject() {
         assertEquals(Map.of(), new Args(new HashMap<>()).map("x"));
         assertEquals(Map.of("k", 1), new Args(Map.of("x", Map.of("k", 1))).map("x"));
-        assertThrows(ToolException.class, () -> new Args(Map.of("x", "s")).map("x"));
+        Args a5 = new Args(Map.of("x", "s"));
+        assertThrows(ToolException.class, () -> a5.map("x"));
     }
 }

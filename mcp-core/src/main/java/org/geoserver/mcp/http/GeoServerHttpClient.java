@@ -7,6 +7,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Objects;
 import org.geoserver.config.GeoServer;
 import org.geoserver.mcp.settings.McpSettingsStore;
 import org.geoserver.mcp.tool.ToolContext;
@@ -16,6 +18,21 @@ public class GeoServerHttpClient {
     public record Response(int status, String contentType, byte[] body) {
         public String text() {
             return new String(body, StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Response other && status == other.status && Objects.equals(contentType, other.contentType) && Arrays.equals(body, other.body);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Objects.hash(status, contentType) + Arrays.hashCode(body);
+        }
+
+        @Override
+        public String toString() {
+            return "Response[status=" + status + ", contentType=" + contentType + ", body=" + (body == null ? "null" : body.length + " bytes") + "]";
         }
     }
 

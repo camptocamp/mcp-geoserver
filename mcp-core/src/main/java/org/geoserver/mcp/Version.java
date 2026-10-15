@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.Properties;
 
 public final class Version {
+    private static final String DEV = "0.0.0-dev";
     private static final String VALUE = read();
 
     private Version() {}
@@ -17,8 +18,9 @@ public final class Version {
         Properties p = new Properties();
         try (InputStream in = Version.class.getResourceAsStream("/META-INF/mcp-version.properties")) {
             if (in != null) p.load(in);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            return DEV;
         }
-        return p.getProperty("version", "0.0.0-dev");
+        return p.getProperty("version", DEV);
     }
 }

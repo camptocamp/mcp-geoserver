@@ -57,9 +57,10 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
     public void createVectorStoreRejectsUnknownKeyAndCreatesNothing() throws Exception {
         run(tool(new WorkspaceTools(getCatalog()).tools(), "gs_create_workspace"), Map.of("name", "unk"));
         var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
-        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of(
+        Map<String, Object> args = Map.of(
                 "workspace", "unk", "name", "props", "type", "Properties",
-                "params", Map.of("directory", "/tmp", "bogus", "x"))));
+                "params", Map.of("directory", "/tmp", "bogus", "x"));
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
         assertTrue(e.getMessage(), e.getMessage().contains("unknown keys [bogus]"));
         assertNull(getCatalog().getDataStoreByName("unk", "props"));
     }
@@ -68,8 +69,9 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
     public void createVectorStoreRejectsMissingRequiredKey() throws Exception {
         run(tool(new WorkspaceTools(getCatalog()).tools(), "gs_create_workspace"), Map.of("name", "mis"));
         var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
-        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of(
-                "workspace", "mis", "name", "props", "type", "Properties", "params", Map.of())));
+        Map<String, Object> args = Map.of(
+                "workspace", "mis", "name", "props", "type", "Properties", "params", Map.of());
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
         assertTrue(e.getMessage(), e.getMessage().contains("missing required keys [directory]"));
         assertNull(getCatalog().getDataStoreByName("mis", "props"));
     }
@@ -93,8 +95,9 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
     public void unknownStoreTypeIsError() throws Exception {
         run(tool(new WorkspaceTools(getCatalog()).tools(), "gs_create_workspace"), Map.of("name", "bad"));
         var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
-        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of(
-                "workspace", "bad", "name", "x", "type", "NoSuchFormat", "params", Map.of())));
+        Map<String, Object> args = Map.of(
+                "workspace", "bad", "name", "x", "type", "NoSuchFormat", "params", Map.of());
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
         assertTrue(e.getMessage(), e.getMessage().startsWith("Unknown store type 'NoSuchFormat'"));
     }
 
@@ -145,15 +148,17 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
     @Test
     public void putStyleRejectsMalformedSld() {
         var t = tool(new StyleTools(getCatalog()).tools(), "gs_put_style");
-        assertThrows(ToolException.class, () -> run(t, Map.of("name", "broken", "body", "<StyledLayerDescriptor>")));
+        Map<String, Object> args = Map.of("name", "broken", "body", "<StyledLayerDescriptor>");
+        assertThrows(ToolException.class, () -> run(t, args));
         assertNull(getCatalog().getStyleByName("broken"));
     }
 
     @Test
     public void putStyleUnknownFormatNamesInstalledFormats() {
         var t = tool(new StyleTools(getCatalog()).tools(), "gs_put_style");
+        Map<String, Object> args = Map.of("name", "c", "body", "* { fill: red; }", "format", "nosuchformat");
         ToolException e = assertThrows(ToolException.class,
-                () -> run(t, Map.of("name", "c", "body", "* { fill: red; }", "format", "nosuchformat")));
+                () -> run(t, args));
         assertTrue(e.getMessage(), e.getMessage().contains("sld"));
         assertNull(getCatalog().getStyleByName("c"));
     }
@@ -161,10 +166,11 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
     @Test
     public void createPostgisStoreRejectsWhenDatabaseUnreachable() {
         var t = tool(new StoreTools(getCatalog()).tools(), "gs_create_store");
-        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of(
+        Map<String, Object> args = Map.of(
                 "workspace", "cite", "name", "pgdown", "type", "PostGIS",
                 "params", Map.of("dbtype", "postgis", "host", "127.0.0.1", "port", 1, "database", "db",
-                        "user", "bob", "passwd", "secret", "schema", "public"))));
+                        "user", "bob", "passwd", "secret", "schema", "public"));
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
         assertTrue(e.getMessage(), e.getMessage().startsWith("Cannot connect store 'pgdown'"));
         assertFalse(e.getMessage(), e.getMessage().contains("secret"));
         assertNull(getCatalog().getDataStoreByName("cite", "pgdown"));
@@ -194,7 +200,8 @@ public class CatalogWriteToolsTest extends McpToolTestSupport {
         run(t, Map.of("kind", "layer", "name", "del:one"));
         assertNull(getCatalog().getLayerByName("del:one"));
         assertNull(getCatalog().getCoverageByName("del", "one"));
-        ToolException e = assertThrows(ToolException.class, () -> run(t, Map.of("kind", "store", "workspace", "del", "name", "bm")));
+        Map<String, Object> args = Map.of("kind", "store", "workspace", "del", "name", "bm");
+        ToolException e = assertThrows(ToolException.class, () -> run(t, args));
         assertTrue(e.getMessage(), e.getMessage().contains("recurse"));
         run(t, Map.of("kind", "store", "workspace", "del", "name", "bm", "recurse", true));
         assertNull(getCatalog().getCoverageStoreByName("del", "bm"));

@@ -7,8 +7,7 @@ import java.io.IOException;
 import org.geoserver.mcp.security.McpGate;
 import org.geoserver.mcp.settings.McpSettings;
 import org.geoserver.mcp.settings.McpSettingsStore;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,7 +22,7 @@ public class McpController {
         this.holder = holder;
     }
 
-    @RequestMapping(path = "/mcp", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.DELETE})
+    @PostMapping(path = "/mcp")
     public void handle(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         McpSettings s = settings.load();
         if (!s.enabled()) {
