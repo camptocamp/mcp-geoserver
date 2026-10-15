@@ -1,6 +1,7 @@
 # <img src="https://raw.githubusercontent.com/geoserver/geoserver/main/src/web/core/src/main/java/org/geoserver/web/img/logo.png" alt="GeoServer" height="48" align="absmiddle"> GeoServer MCP
 
 [![Latest release](https://img.shields.io/github/v/release/camptocamp/mcp-geoserver?color=brightgreen&label=release)](https://github.com/camptocamp/mcp-geoserver/releases/latest)
+[![License: GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 [![Tests](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/camptocamp/mcp-geoserver/actions/workflows/ci.yml)
 
 An MCP (Model Context Protocol) server that runs inside GeoServer. Point Claude Code or any MCP client at `/geoserver/mcp` and administer the catalog from chat: publish layers, write styles or bring them over from QGIS, query features, look at rendered maps, seed tile caches.
@@ -156,3 +157,14 @@ See `docker/cloud/README.md`.
 ## Releasing
 
 Maintainers: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow sets the Maven version from the tag, runs the unit tests and attaches the zip and its checksum to a GitHub release.
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+- Bugs and ideas: open an [issue](https://github.com/camptocamp/mcp-geoserver/issues). For a bug, give the GeoServer version, the tool call and the result or error.
+- Code: fork, branch, then open a pull request against `master`. Read `AGENTS.md` first for the layout and conventions. `./mvnw -q verify` must pass; CI runs it on every pull request.
+
+## License
+
+GPL-2.0, like GeoServer. See [LICENSE](LICENSE).
