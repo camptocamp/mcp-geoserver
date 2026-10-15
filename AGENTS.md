@@ -42,13 +42,9 @@ CI fails when the SonarQube quality gate fails on new code. Write code that pass
 
 - A string literal of 5+ characters repeated 3 or more times becomes a constant. Shared across files: `org.geoserver.mcp.tool.Keys` (JSON keys, argument names, REST path prefixes, repeated descriptions). Repeated only inside one file: a `private static final` in that file. Reuse an existing `Keys` constant before adding one or writing the literal again.
 - Cognitive complexity stays at 15 or below per method. When a tool's `call` grows, extract helpers on the tool group class (validation, building, tracing) rather than nesting more branches.
-- XML parsers and transformers disable external entities: `FEATURE_SECURE_PROCESSING` and `disallow-doctype-decl` on `DocumentBuilderFactory`, empty `ACCESS_EXTERNAL_DTD` and `ACCESS_EXTERNAL_STYLESHEET` on `TransformerFactory`. Reuse `org.geoserver.mcp.tool.SafeXml.parse` and `SafeXml.write`.
+- XML goes through `org.geoserver.mcp.tool.SafeXml.parse` and `SafeXml.write`, which disable DTDs and external entities; do not create `DocumentBuilderFactory` or `TransformerFactory` elsewhere.
 - A constant must not differ from a field or record component only by case (e.g. `AUTHORIZATION` next to `authorization`); suffix context-map keys with `_KEY`.
 - Coverage on new code stays at 90% or above: every new tool or branch comes with a test. Prefer Mockito or `StubHttpServer` unit tests over `GeoServerSystemTestSupport`, which is slow.
-- No unused imports.
-- Records holding an array override `equals`, `hashCode` and `toString` (see `GeoServerHttpClient.Response`).
-- Inside `assertThrows`, the lambda makes exactly one call: build arguments, contexts and objects before it.
-- No empty `catch` blocks; return a fallback or extract a method instead.
 - Two rules are excluded in `pom.xml` and stay excluded: `java:S110` for Wicket pages (the inheritance depth comes from GeoServer) and `java:S112` on `GsTool.call` (any failure is turned into an MCP error by `ToolAdapter`). Do not add exclusions for anything else; fix the code.
 
 ## Tool catalogue
