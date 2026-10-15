@@ -8,7 +8,7 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 
 | Target | State |
 | --- | --- |
-| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 30 tools, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
+| Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists 32 tools, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
 | GeoServer Cloud 3.0.1 | Files exist in `docker/cloud`; not built or run yet. |
 
 ## Install
@@ -56,8 +56,8 @@ Read
 - `gs_status`: versions, proxy base URL, counts
 - `gs_list_workspaces`, `gs_get_workspace`
 - `gs_list_stores`, `gs_get_store`
-- `gs_list_layers`, `gs_get_layer`
-- `gs_list_styles`, `gs_get_style` (returns the SLD body)
+- `gs_list_layers`, `gs_get_layer`, `gs_check_layer` (text-only render check)
+- `gs_list_styles`, `gs_get_style` (returns the SLD body), `gs_validate_style` (parse and report findings, writes nothing)
 - `gs_list_layer_groups`, `gs_get_layer_group`
 
 Discovery

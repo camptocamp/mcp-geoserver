@@ -1,6 +1,8 @@
 package org.geoserver.mcp.tools.data;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -15,6 +17,10 @@ import org.geoserver.mcp.settings.McpSettingsStore;
 import org.geoserver.mcp.tool.Payloads;
 import org.geoserver.mcp.tool.ToolException;
 import org.junit.Test;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import javax.imageio.ImageIO;
+
 
 public class DataToolsTest extends McpToolTestSupport {
 
@@ -91,5 +97,53 @@ public class DataToolsTest extends McpToolTestSupport {
                     "layers", List.of("nope"), "bbox", List.of(0, 0, 1, 1), "width", 10, "height", 10)));
             assertTrue(e.getMessage(), e.getMessage().contains("Could not find layer nope"));
         }
+    }
+
+    static byte[] halfPaintedPng() throws Exception {
+        BufferedImage img = new BufferedImage(4, 4, BufferedImage.TYPE_INT_ARGB);
+        for (int x = 0; x < 2; x++) for (int y = 0; y < 4; y++) img.setRGB(x, y, 0xff0000ff);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", bos);
+        return bos.toByteArray();
+    }
+
+    @Test
+    public void checkLayerCountsPaintedPixelsAtNativeBbox() throws Exception {
+        byte[] png = halfPaintedPng();
+        try (StubHttpServer stub = new StubHttpServer(r -> new StubHttpServer.Reply(200, "image/png", png))) {
+            var ctx = ctx();
+            JsonNode r = json.readTree(json.writeValueAsString(runRaw(tool(tools(stub.url()).tools(), "gs_check_layer"), ctx, Map.of("name", "cite:Lakes"))));
+            assertTrue(r.toString(), r.get("ok").asBoolean());
+            assertEquals(200, r.get("status").asInt());
+            assertEquals("image/png", r.get("contentType").asText());
+            assertEquals(0.5, r.get("paintedRatio").asDouble(), 1e-9);
+            assertTrue(r.get("elapsedMs").asLong() >= 0);
+            assertNull(r.get("serviceException"));
+            var bb = getCatalog().getLayerByName("cite:Lakes").getResource().getLatLonBoundingBox();
+            String q = stub.received.get(0).query();
+            assertTrue(q, q.contains("LAYERS=cite:Lakes") && q.contains("TRANSPARENT=true") && q.contains("SRS=EPSG:4326")
+                    && q.contains("BBOX=" + bb.getMinX() + "," + bb.getMinY() + "," + bb.getMaxX() + "," + bb.getMaxY()));
+            assertTrue(ctx.trace().lines().get(0).contains("/wms?"));
+        }
+    }
+
+    @Test
+    public void checkLayerReportsServiceExceptionAsText() throws Exception {
+        String xml = "<ServiceExceptionReport><ServiceException>Property NOPE could not be found</ServiceException></ServiceExceptionReport>";
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "application/vnd.ogc.se_xml", xml))) {
+            JsonNode r = json.readTree(json.writeValueAsString(runRaw(tool(tools(stub.url()).tools(), "gs_check_layer"), ctx(), Map.of(
+                    "name", "cite:Lakes", "bbox", List.of(0, 0, 1, 1), "width", 10, "height", 20))));
+            assertFalse(r.get("ok").asBoolean());
+            assertTrue(r.get("serviceException").asText(), r.get("serviceException").asText().contains("Property NOPE could not be found"));
+            assertNull(r.get("paintedRatio"));
+            String q = stub.received.get(0).query();
+            assertTrue(q, q.contains("BBOX=0.0,0.0,1.0,1.0") && q.contains("WIDTH=10") && q.contains("HEIGHT=20"));
+        }
+    }
+
+    @Test
+    public void checkLayerUnknownLayerIsToolError() {
+        var t = tool(tools("").tools(), "gs_check_layer");
+        assertThrows(ToolException.class, () -> runRaw(t, ctx(), Map.of("name", "nothing")));
     }
 }

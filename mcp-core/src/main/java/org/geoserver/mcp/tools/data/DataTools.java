@@ -1,10 +1,15 @@
 package org.geoserver.mcp.tools.data;
 
 import io.modelcontextprotocol.spec.McpSchema;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import javax.imageio.ImageIO;
 import org.geoserver.catalog.Catalog;
 import org.geoserver.catalog.FeatureTypeInfo;
 import org.geoserver.catalog.LayerInfo;
@@ -25,6 +30,7 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.filter.text.cql2.CQLException;
 import org.geotools.filter.text.ecql.ECQL;
+import org.geotools.geometry.jts.ReferencedEnvelope;
 
 public class DataTools {
     private final Catalog catalog;
@@ -36,7 +42,7 @@ public class DataTools {
     }
 
     public List<GsTool> tools() {
-        return List.of(queryFeatures(), getMap());
+        return List.of(queryFeatures(), getMap(), checkLayer());
     }
 
     GsTool queryFeatures() {
@@ -128,6 +134,70 @@ public class DataTools {
                 return new Payloads.ImagePayload(r.body(), r.contentType().split(";")[0].trim());
             }
         };
+    }
+
+    GsTool checkLayer() {
+        return new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_check_layer", Schema.object()
+                        .string("name", "Layer name, workspace:name", true)
+                        .numberArray("bbox", "minx, miny, maxx, maxy in EPSG:4326; default the layer's lat/lon bounds", false)
+                        .integer("width", "Image width in pixels, default 256", false)
+                        .integer("height", "Image height in pixels, default 256", false).build())
+                        .description("Render one layer with WMS GetMap and report text only: status, content type, ServiceException text, "
+                                + "ratio of painted pixels, elapsed ms. Use this instead of gs_get_map to check that a layer and its style render.").build();
+            }
+            public Object call(ToolContext ctx, Args args) throws Exception {
+                LayerInfo layer = Lookups.layer(catalog, args.string("name"));
+                List<Double> bbox = args.numbers("bbox");
+                if (bbox.isEmpty()) {
+                    ReferencedEnvelope ll = layer.getResource().getLatLonBoundingBox();
+                    if (ll == null) throw new ToolException("Layer '" + layer.prefixedName() + "' has no lat/lon bounds; pass bbox");
+                    bbox = List.of(ll.getMinX(), ll.getMinY(), ll.getMaxX(), ll.getMaxY());
+                } else if (bbox.size() != 4) {
+                    throw new ToolException("bbox needs exactly 4 numbers");
+                }
+                int width = args.integer("width", 256);
+                int height = args.integer("height", 256);
+                String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + enc(layer.prefixedName()) + "&STYLES="
+                        + "&BBOX=" + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
+                        + "&SRS=EPSG:4326&WIDTH=" + width + "&HEIGHT=" + height
+                        + "&FORMAT=" + enc("image/png") + "&TRANSPARENT=true&EXCEPTIONS=" + enc("application/vnd.ogc.se_xml");
+                long start = System.nanoTime();
+                GeoServerHttpClient.Response r = http.get(ctx, path);
+                long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+                String contentType = r.contentType().split(";")[0].trim();
+                BufferedImage img = r.status() == 200 && contentType.startsWith("image/") ? ImageIO.read(new ByteArrayInputStream(r.body())) : null;
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("ok", img != null);
+                m.put("layer", layer.prefixedName());
+                m.put("bbox", bbox);
+                m.put("width", width);
+                m.put("height", height);
+                m.put("status", r.status());
+                m.put("contentType", contentType);
+                m.put("elapsedMs", elapsedMs);
+                if (img != null) {
+                    m.put("paintedRatio", paintedRatio(img));
+                } else {
+                    String text = contentType.startsWith("image/") ? "Undecodable image" : r.text().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+                    m.put("serviceException", text);
+                }
+                return m;
+            }
+        };
+    }
+
+    static double paintedRatio(BufferedImage img) {
+        boolean alpha = img.getColorModel().hasAlpha();
+        long painted = 0;
+        for (int y = 0; y < img.getHeight(); y++) {
+            for (int x = 0; x < img.getWidth(); x++) {
+                int argb = img.getRGB(x, y);
+                if (alpha ? (argb >>> 24) != 0 : (argb & 0xffffff) != 0xffffff) painted++;
+            }
+        }
+        return Math.round(10000.0 * painted / ((long) img.getWidth() * img.getHeight())) / 10000.0;
     }
 
     static String enc(String s) {

@@ -45,7 +45,9 @@ Read
 - `gs_list_workspaces()`, `gs_get_workspace(name)`
 - `gs_list_stores(workspace?)`, `gs_get_store(workspace, name)`
 - `gs_list_layers(workspace?)`, `gs_get_layer(name)`
+- `gs_check_layer(name, bbox[]?, width?, height?)`: GetMap over HTTP, text only: status, contentType, serviceException, paintedRatio, elapsedMs
 - `gs_list_styles(workspace?)`, `gs_get_style(name, workspace?)` returns the style body
+- `gs_validate_style(body | name, workspace?, layer?, format?)`: parse only; parseError, version, unknownFunctions, unresolvedGraphics, missingAttributes when layer given
 - `gs_list_layer_groups(workspace?)`, `gs_get_layer_group(name, workspace?)`
 
 Discovery
@@ -75,7 +77,7 @@ GeoWebCache (via GWC REST over HTTP)
 ## Gotchas
 
 - `tools/call` runs on the servlet thread (`immediateExecution(true)`), so `SecurityContextHolder` and the secured catalog work. Do not remove that flag.
-- `gs_get_map` and `gs_gwc_*` go over HTTP even on vanilla, with the caller's `Authorization` header forwarded. Base URL order: `mcp.internalBaseUrl`, proxy base URL, request URL.
+- `gs_get_map`, `gs_check_layer` and `gs_gwc_*` go over HTTP even on vanilla, with the caller's `Authorization` header forwarded. Base URL order: `mcp.internalBaseUrl`, proxy base URL, request URL.
 - `gs_gwc_set_tile_layer` sends GWC's XML representation; GWC 2.0.1 rejects multi-element JSON updates. `gs_gwc_seed` uses JSON.
 - The MCP stateless transport answers 400 unless `Accept` contains both `application/json` and `text/event-stream`.
 - GeoServer 3.0.1 ships Jackson 3; the zip carries its own Jackson 2.22 core and databind.

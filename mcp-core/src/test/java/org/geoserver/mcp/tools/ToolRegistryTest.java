@@ -29,7 +29,7 @@ public class ToolRegistryTest extends McpToolTestSupport {
             assertTrue(t.definition().name(), names.add(t.definition().name()));
             assertTrue(t.definition().name(), t.definition().description() != null && !t.definition().description().isBlank());
         }
-        assertEquals(30, all.size());
+        assertEquals(32, all.size());
     }
 
     @Test
@@ -42,7 +42,7 @@ public class ToolRegistryTest extends McpToolTestSupport {
             assertNotNull(t.definition().name(), a);
             if (a.readOnlyHint()) readOnly++;
         }
-        assertEquals(19, readOnly);
+        assertEquals(21, readOnly);
         assertTrue(ToolHints.of("gs_delete").destructiveHint());
         assertTrue(ToolHints.of("gs_gwc_seed").destructiveHint());
         assertTrue(ToolHints.of("gs_gwc_set_tile_layer").destructiveHint());

@@ -6,7 +6,7 @@ import java.util.Set;
 public final class ToolHints {
     private static final Set<String> READ = Set.of(
             "gs_status", "gs_list_workspaces", "gs_get_workspace", "gs_list_stores", "gs_get_store",
-            "gs_list_layers", "gs_get_layer", "gs_list_styles", "gs_get_style", "gs_list_layer_groups",
+            "gs_list_layers", "gs_get_layer", "gs_check_layer", "gs_list_styles", "gs_get_style", "gs_validate_style", "gs_list_layer_groups",
             "gs_get_layer_group", "gs_list_store_types", "gs_list_modules", "gs_query_features", "gs_get_map",
             "gs_gwc_list_tile_layers", "gs_gwc_get_tile_layer", "gs_gwc_list_gridsets", "gs_gwc_list_tasks");
     private static final Set<String> ADDITIVE = Set.of(

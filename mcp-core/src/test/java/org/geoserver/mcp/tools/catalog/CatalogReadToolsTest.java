@@ -1,6 +1,8 @@
 package org.geoserver.mcp.tools.catalog;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -13,6 +15,7 @@ import org.geoserver.catalog.CatalogBuilder;
 import org.geoserver.catalog.DataStoreInfo;
 import org.geoserver.catalog.LayerGroupInfo;
 import org.geoserver.data.test.SystemTestData;
+import org.geoserver.catalog.WorkspaceInfo;
 import org.geoserver.mcp.McpToolTestSupport;
 import org.geoserver.mcp.tool.ToolException;
 import org.junit.Test;
@@ -133,5 +136,88 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
         runRaw(tool(new WorkspaceTools(getCatalog()).tools(), "gs_list_workspaces"), ctx, Map.of());
         assertEquals(1, ctx.trace().lines().size());
         assertTrue(ctx.trace().lines().get(0).endsWith("'/rest/workspaces.json'"));
+    }
+
+    static final String SLD10 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<StyledLayerDescriptor version=\"1.0.0\" xmlns=\"http://www.opengis.net/sld\" xmlns:ogc=\"http://www.opengis.net/ogc\""
+            + " xmlns:xlink=\"http://www.w3.org/1999/xlink\">"
+            + "<NamedLayer><Name>t</Name><UserStyle><FeatureTypeStyle><Rule>"
+            + "<ogc:Filter><ogc:PropertyIsEqualTo><ogc:PropertyName>NAME</ogc:PropertyName><ogc:Literal>Blue Lake</ogc:Literal></ogc:PropertyIsEqualTo></ogc:Filter>"
+            + "<PointSymbolizer><Graphic><ExternalGraphic><OnlineResource xlink:type=\"simple\" xlink:href=\"HREF\"/>"
+            + "<Format>image/svg+xml</Format></ExternalGraphic><Size>8</Size></Graphic></PointSymbolizer>"
+            + "<TextSymbolizer><Label><ogc:PropertyName>LABELFIELD</ogc:PropertyName></Label></TextSymbolizer>"
+            + "</Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>";
+
+    JsonNode validate(Map<String, Object> args) throws Exception {
+        return run(tool(new StyleTools(getCatalog()).tools(), "gs_validate_style"), args);
+    }
+
+    @Test
+    public void validateStyleReportsMissingAttributesAndUnresolvedGraphic() throws Exception {
+        JsonNode r = validate(Map.of("body", SLD10.replace("HREF", "missing.svg").replace("LABELFIELD", "NOPE"),
+                "workspace", "cite", "layer", "cite:Lakes"));
+        assertEquals("1.0.0", r.get("version").asText());
+        assertFalse(r.get("valid").asBoolean());
+        assertEquals(List.of("NOPE"), names(r.get("missingAttributes")));
+        assertEquals(List.of("missing.svg"), names(r.get("unresolvedGraphics")));
+        assertEquals(0, r.get("unknownFunctions").size());
+        assertNull(r.get("parseError"));
+    }
+
+    @Test
+    public void validateStyleResolvesGraphicInWorkspaceStyleDir() throws Exception {
+        WorkspaceInfo ws = getCatalog().getWorkspaceByName("cite");
+        try (var out = getDataDirectory().getStyles(ws, "ok.svg").out()) {
+            out.write("<svg/>".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        JsonNode r = validate(Map.of("body", SLD10.replace("HREF", "ok.svg?fill=red").replace("LABELFIELD", "NAME"),
+                "workspace", "cite", "layer", "cite:Lakes"));
+        assertTrue(r.toString(), r.get("valid").asBoolean());
+        assertEquals(0, r.get("unresolvedGraphics").size());
+        assertEquals(0, r.get("missingAttributes").size());
+    }
+
+    @Test
+    public void validateStyleFlagsAbsolutePathAndSkipsHttp() throws Exception {
+        JsonNode r = validate(Map.of("body", SLD10.replace("HREF", "/no/such dir/icon.svg").replace("LABELFIELD", "NAME")));
+        assertEquals(List.of("/no/such dir/icon.svg"), names(r.get("unresolvedGraphics")));
+        JsonNode h = validate(Map.of("body", SLD10.replace("HREF", "http://example.com/x.svg").replace("LABELFIELD", "NAME")));
+        assertEquals(0, h.get("unresolvedGraphics").size());
+        assertNull(h.get("missingAttributes"));
+    }
+
+    @Test
+    public void validateStyleNamesUnknownFunctionsEvenWhenParseFails() throws Exception {
+        String body = SLD10.replace("<ogc:PropertyName>LABELFIELD</ogc:PropertyName>",
+                "<ogc:Function name=\"array_to_string\"><ogc:PropertyName>NAME</ogc:PropertyName></ogc:Function>").replace("HREF", "x.svg");
+        JsonNode r = validate(Map.of("body", body));
+        assertFalse(r.get("valid").asBoolean());
+        assertEquals(List.of("array_to_string"), names(r.get("unknownFunctions")));
+    }
+
+    @Test
+    public void validateStyleReportsParseErrorWithoutThrowing() throws Exception {
+        JsonNode r = validate(Map.of("body", "<StyledLayerDescriptor>"));
+        assertFalse(r.get("valid").asBoolean());
+        assertTrue(r.get("parseError").asText(), r.get("parseError").asText().length() > 0);
+    }
+
+    @Test
+    public void validateStyleByNameReadsStoredBody() throws Exception {
+        JsonNode r = validate(Map.of("name", "Lakes", "layer", "cite:Lakes"));
+        assertTrue(r.toString(), r.get("valid").asBoolean());
+        assertEquals(0, r.get("missingAttributes").size());
+    }
+
+    @Test
+    public void validateStyleNeedsBodyOrName() {
+        var t = tool(new StyleTools(getCatalog()).tools(), "gs_validate_style");
+        assertThrows(ToolException.class, () -> run(t, Map.of("workspace", "cite")));
+    }
+
+    List<String> names(JsonNode array) {
+        List<String> out = new ArrayList<>();
+        array.forEach(n -> out.add(n.asText()));
+        return out;
     }
 }
