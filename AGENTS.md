@@ -126,7 +126,7 @@ GeoWebCache (via GWC REST over HTTP)
 - `gs_gwc_set_tile_layer` sends GWC's XML representation; GWC 2.0.1 rejects multi-element JSON updates. `gs_gwc_seed` uses JSON.
 - The MCP stateless transport answers 400 unless `Accept` contains both `application/json` and `text/event-stream`.
 - GeoServer 3.0.1 ships Jackson 3; the zip carries its own Jackson 2.22 core and databind.
-- Cloud image: jars must be appended to `BOOT-INF/classpath.idx`, and `AOT_MODE=off`.
+- Cloud image, 3.0.1: jars must be appended to `BOOT-INF/classpath.idx`, and `AOT_MODE=off` (derived image). 3.0.2+ (geoserver-cloud PR #920): mount jars at `/opt/additional_libs` instead; the image runs `PropertiesLauncher` with `LOADER_PATH` set and `AOT_MODE=auto`, so no derived image and no `AOT_MODE=off`. See `docker/cloud/README.md`.
 - The GeoServer test harness is JUnit 4; new tool tests extend `McpToolTestSupport`.
 
 ## Version facts (verified 2026-09-25)
