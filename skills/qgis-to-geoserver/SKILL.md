@@ -58,6 +58,8 @@ for qname, gname in todo.items():
 
 Report every non-`ok` line to the user: those are parts QGIS could not export or changed. Data-defined properties and shapeburst fills are dropped without a message; name them if the user asks what was lost.
 
+Raster layers: the loop above is vector only. For a raster (singleband pseudocolor, paletted), export with `layer.saveSldStyle(path)`, which writes **SLD 1.0**. Do not use `exportSldStyleV3`: its SLD 1.1 `ColorMap` uses the old `ColorMapEntry` list, and GeoServer rejects it with `Parsing failed for ColorMap: Categorize or Interpolate not specified`. Publish the raster as a GeoTIFF coverage store (REST: create the store with JSON `{"coverageStore":{"type":"GeoTIFF","url":"file:/path.tif"}}`, then POST a coverage), set the style, and render-compare as in step 6. Verified: SLD 1.0 uploads 201 and the singleband gradient matches QGIS.
+
 ## 3. Upload with the script
 
 `$GS_URL` is the GeoServer base URL without `/mcp` (for example `http://localhost:8080/geoserver`), `$GS_AUTH` is `user:password`. `-d` sets each style as the default style of layer `WS:<basename>`.
