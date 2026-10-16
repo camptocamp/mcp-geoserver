@@ -23,6 +23,8 @@ The symbology path mostly holds; the breakage is in labels, expressions, data-de
 | Dashed line (custom dash) | 201 | matches | works | - |
 | Marker line (markers along a line) | 201 | `GraphicStroke`, matches | works | - |
 | Multiline label (`char(10)`) | 201 | real newline via `Concatenate`, matches | works | - |
+| Marker rotated by a field (wind arrows) | 201 | orientations match | works | - |
+| Curved label along a line | 201 | follows the line; GeoServer centers it on the line, QGIS offsets above | works | - |
 | Data-defined color (`ramp_color`, expression fill) | 201 | NOT dynamic: exported as one static color | degrades | rebuild as an SLD `Interpolate`/`Recode` by hand, or accept static |
 | Time-dependent expression (`now()`, `format_date(now())`) | 201 | frozen to the export-date literal, never re-evaluated | degrades | compute server-side or avoid time in the label |
 | Blend modes, layer opacity | - | no SLD equivalent, dropped | not portable | - |
@@ -44,6 +46,18 @@ Data-defined size and rotation: QGIS varies both; GeoServer keeps the rotation b
 | QGIS | GeoServer |
 | --- | --- |
 | ![ddl_pts in QGIS](img/qgis_ddl.png) | ![ddl_pts in GeoServer](img/gs_ddl.png) |
+
+Markers rotated by a field (wind arrows): orientations reproduce; markers render a touch smaller.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![wind_pts in QGIS](img/qgis_wind.png) | ![wind_pts in GeoServer](img/gs_wind.png) |
+
+Curved label along a line: the text follows the line on both; GeoServer centres it on the line, QGIS offsets it above.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![lines in QGIS](img/qgis_lines.png) | ![lines in GeoServer](img/gs_lines.png) |
 
 ## Complex examples
 
