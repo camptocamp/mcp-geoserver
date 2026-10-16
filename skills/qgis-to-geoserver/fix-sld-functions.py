@@ -58,6 +58,53 @@ HREF = re.compile(r'xlink:href="([^"]+)"')
 FONT_FAMILY = re.compile(r'(name="font-family">)([^<]+)(</)')
 TTF = re.compile(r'(ttf://)([^#"\s]+)')
 
+# QGIS exports line labels with followLine=true but maxAngleDelta=25 and no offset,
+# so GeoServer keeps them straight, drops the ones it cannot fit, and sits them on
+# the line. Raise maxAngleDelta to follow bends, lift them off the line, and let
+# multi-segment lines repeat/group. (followLine still cannot kink at a sharp vertex.)
+MAX_ANGLE_DELTA = 90
+TEXTSYM = re.compile(r'<(\w+:)?TextSymbolizer>.*?</(?:\w+:)?TextSymbolizer>', re.S)
+LINEPLACEMENT = re.compile(r'<(?:\w+:)?LinePlacement>')
+FONT_SIZE = re.compile(r'font-size">\s*([\d.]+)')
+PERP_OFFSET = re.compile(r'<(?:\w+:)?PerpendicularOffset>[^<]*</(?:\w+:)?PerpendicularOffset>')
+LINE_END = re.compile(r'</(?:\w+:)?LinePlacement>')
+SYM_END = re.compile(r'</(?:\w+:)?TextSymbolizer>')
+
+
+def _vopt(name):
+    return re.compile(r'<(?:\w+:)?VendorOption name="%s">([^<]*)</(?:\w+:)?VendorOption>' % name)
+
+
+def tune_line_labels(text):
+    tuned = [False]
+
+    def repl(m):
+        block = m.group(0)
+        if not LINEPLACEMENT.search(block):
+            return block
+        p = m.group(1) or ""
+        orig = block
+        fs = FONT_SIZE.search(block)
+        offset = -max(1, round(float(fs.group(1)) / 2)) if fs else -5
+        if PERP_OFFSET.search(block):
+            block = PERP_OFFSET.sub(f"<{p}PerpendicularOffset>{offset}</{p}PerpendicularOffset>", block, count=1)
+        else:
+            block = LINE_END.sub(f"<{p}PerpendicularOffset>{offset}</{p}PerpendicularOffset></{p}LinePlacement>", block, count=1)
+        mad = _vopt("maxAngleDelta").search(block)
+        if mad:
+            if float(mad.group(1)) < MAX_ANGLE_DELTA:
+                block = _vopt("maxAngleDelta").sub(f'<{p}VendorOption name="maxAngleDelta">{MAX_ANGLE_DELTA}</{p}VendorOption>', block, count=1)
+        else:
+            block = SYM_END.sub(f'<{p}VendorOption name="maxAngleDelta">{MAX_ANGLE_DELTA}</{p}VendorOption></{p}TextSymbolizer>', block, count=1)
+        for name, val in (("repeat", "250"), ("group", "yes")):
+            if not _vopt(name).search(block):
+                block = SYM_END.sub(f'<{p}VendorOption name="{name}">{val}</{p}VendorOption></{p}TextSymbolizer>', block, count=1)
+        if block != orig:
+            tuned[0] = True
+        return block
+
+    return TEXTSYM.sub(repl, text), tuned[0]
+
 
 def scan_svg(text):
     bad = []
@@ -137,6 +184,7 @@ def main(argv):
             text = fh.read()
         base = os.path.basename(f)
         new, renamed, blocked = rename_functions(text)
+        new, line_tuned = tune_line_labels(new)
         svg = scan_svg(text)
         font_changes = []
         if args.font_fallback and available is not None:
@@ -156,7 +204,7 @@ def main(argv):
                     print(f"{base}: FONT {fam}: not installed on GeoServer; install it or pass --font-fallback")
         attention = attention or flagged
 
-        wrote = (renamed or font_changes) and not args.check
+        wrote = (renamed or font_changes or line_tuned) and not args.check
         if wrote:
             with open(f, "w", encoding="utf-8") as fh:
                 fh.write(new)
@@ -166,6 +214,8 @@ def main(argv):
             bits.append("functions " + ", ".join(sorted(set(renamed))))
         if font_changes:
             bits.append("fonts " + ", ".join(font_changes) + " -> " + args.font_fallback)
+        if line_tuned:
+            bits.append("line labels (maxAngleDelta, offset, repeat, group)")
         if bits:
             print(f"{base}: {verb} {'; '.join(bits)}")
         elif not flagged:
