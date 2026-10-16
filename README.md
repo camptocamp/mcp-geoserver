@@ -185,9 +185,7 @@ The comparison is mandatory because GeoServer accepts some broken styles without
 
 Before opening a QGIS project, the agent scans it for stored credentials (`password=`, `authcfg=`, `service=`) and asks before loading it.
 
-For a render-verified, technique-by-technique breakdown of what survives this conversion (with QGIS vs GeoServer screenshots), see [docs/qgis-vs-geoserver-styling.md](docs/qgis-vs-geoserver-styling.md).
-
-The converter is a choice: QGIS native export, ours (native plus `fix-sld-functions.py`), or GeoCat Bridge. They trade off (ours gets function names and fonts right, Bridge gets hatches and SVG upload right); see [docs/qgis-to-geoserver-converters.md](docs/qgis-to-geoserver-converters.md).
+The converter is a choice: QGIS native export, GeoCat Bridge, or ours (Bridge-if-installed plus `fix-sld-functions.py`, the default). For a render-verified, style-by-style comparison of all three against QGIS (with screenshots), see [docs/qgis-vs-geoserver-styling.md](docs/qgis-vs-geoserver-styling.md). Checked on QGIS 4.2.3, GeoServer 3.0.1, and GeoCat Bridge 4.6.1 (bridgestyle 0.1.8).
 
 ## Rasters on S3, Google Cloud Storage or HTTP
 

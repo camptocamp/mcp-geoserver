@@ -36,4 +36,21 @@ code, log, body = run(["--available", "DejaVu Sans,SansSerif", "--font-fallback"
                       '<se:SvgParameter name="font-family">DejaVu Sans</se:SvgParameter>')
 assert ">SansSerif<" in body and ">DejaVu Sans<" in body, body
 
+# line labels: raise maxAngleDelta, add negative offset, repeat and group
+LINE = (
+    '<TextSymbolizer><Label><ogc:PropertyName>name</ogc:PropertyName></Label>'
+    '<Font><CssParameter name="font-size">14</CssParameter></Font>'
+    '<LabelPlacement><LinePlacement><PerpendicularOffset>0.0</PerpendicularOffset></LinePlacement></LabelPlacement>'
+    '<VendorOption name="followLine">true</VendorOption>'
+    '<VendorOption name="maxAngleDelta">25</VendorOption></TextSymbolizer>')
+code, log, body = run([], LINE)
+assert '"maxAngleDelta">90<' in body, body
+assert '<PerpendicularOffset>-7</PerpendicularOffset>' in body, body
+assert '"repeat">250<' in body and '"group">yes<' in body, body
+# a point label (no LinePlacement) is left untouched
+POINT = ('<TextSymbolizer><Label><ogc:PropertyName>n</ogc:PropertyName></Label>'
+         '<LabelPlacement><PointPlacement/></LabelPlacement></TextSymbolizer>')
+code, log, body = run([], POINT)
+assert "maxAngleDelta" not in body and "PerpendicularOffset" not in body, body
+
 print("ok")
