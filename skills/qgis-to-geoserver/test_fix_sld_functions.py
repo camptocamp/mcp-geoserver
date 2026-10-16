@@ -47,10 +47,28 @@ code, log, body = run([], LINE)
 assert '"maxAngleDelta">90<' in body, body
 assert '<PerpendicularOffset>-7</PerpendicularOffset>' in body, body
 assert '"repeat">250<' in body and '"group">yes<' in body, body
-# a point label (no LinePlacement) is left untouched
-POINT = ('<TextSymbolizer><Label><ogc:PropertyName>n</ogc:PropertyName></Label>'
-         '<LabelPlacement><PointPlacement/></LabelPlacement></TextSymbolizer>')
-code, log, body = run([], POINT)
-assert "maxAngleDelta" not in body and "PerpendicularOffset" not in body, body
+# a line TextSymbolizer picks up maxAngleDelta but a point label must not
+# (checked below via the point-marker case, which has no LinePlacement)
+
+# font marker: ttf:// mark reconciled to a REAL font, not the logical SansSerif
+MARKER = ('<PointSymbolizer><Graphic><Mark><WellKnownName>ttf://Sans#0x41</WellKnownName></Mark></Graphic></PointSymbolizer>'
+          '<TextSymbolizer><Label><ogc:PropertyName>n</ogc:PropertyName></Label>'
+          '<LabelPlacement><PointPlacement><AnchorPoint><AnchorPointX>0.5</AnchorPointX>'
+          '<AnchorPointY>0.5</AnchorPointY></AnchorPoint><Displacement><DisplacementX>0.0</DisplacementX>'
+          '<DisplacementY>0.0</DisplacementY></Displacement></PointPlacement></LabelPlacement>'
+          '<Font><CssParameter name="font-family">Sans</CssParameter></Font></TextSymbolizer>')
+code, log, body = run(["--available", "DejaVu Sans,SansSerif", "--font-fallback", "SansSerif"], MARKER)
+assert "ttf://DejaVu Sans#0x41" in body, body
+assert "ttf://SansSerif" not in body, body
+# point label offset off the marker: anchor x -> 0, displacement x > 0
+assert "<AnchorPointX>0</AnchorPointX>" in body and "<DisplacementX>0.0</DisplacementX>" not in body, body
+
+# polygon label (no PointSymbolizer) stays centred
+POLY = ('<PolygonSymbolizer><Fill/></PolygonSymbolizer>'
+        '<TextSymbolizer><Label><ogc:PropertyName>n</ogc:PropertyName></Label>'
+        '<LabelPlacement><PointPlacement><AnchorPoint><AnchorPointX>0.5</AnchorPointX>'
+        '<AnchorPointY>0.5</AnchorPointY></AnchorPoint></PointPlacement></LabelPlacement></TextSymbolizer>')
+code, log, body = run([], POLY)
+assert "<AnchorPointX>0.5</AnchorPointX>" in body, body
 
 print("ok")
