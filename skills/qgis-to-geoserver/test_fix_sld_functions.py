@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Self-check for fix-sld-functions.py. Run: python3 -I test_fix_sld_functions.py"""
-import subprocess, sys, tempfile, os
+import subprocess, sys, tempfile, os, re
 
 SCRIPT = os.path.join(os.path.dirname(__file__), "fix-sld-functions.py")
 SLD = (
@@ -70,5 +70,48 @@ POLY = ('<PolygonSymbolizer><Fill/></PolygonSymbolizer>'
         '<AnchorPointY>0.5</AnchorPointY></AnchorPoint></PointPlacement></LabelPlacement></TextSymbolizer>')
 code, log, body = run([], POLY)
 assert "<AnchorPointX>0.5</AnchorPointX>" in body, body
+
+# inline SVG: QGIS base64: href decoded to a bare .svg filename, query kept
+B64 = '<ExternalGraphic><OnlineResource xlink:href="base64:PHN2Zy8+?fill=red"/></ExternalGraphic>'
+code, log, body = run([], B64)
+assert "base64:" not in body, body
+assert re.search(r'xlink:href="[^"]+\.svg\?fill=red"', body), body
+assert "inline SVG" in log, log
+
+# se:-prefixed input (QGIS native shape): line label tuned, prefix preserved
+SE_LINE = ('<se:TextSymbolizer><se:Label>x</se:Label>'
+           '<se:LabelPlacement><se:LinePlacement><se:GeneralizeLine>true</se:GeneralizeLine></se:LinePlacement></se:LabelPlacement>'
+           '<se:VendorOption name="followLine">true</se:VendorOption></se:TextSymbolizer>')
+code, log, body = run([], SE_LINE)
+assert '"maxAngleDelta">90<' in body and "<se:PerpendicularOffset>" in body, body
+
+# se:-prefixed point label at the centred default is offset, prefix preserved
+SE_POINT = ('<se:PointSymbolizer><se:Graphic/></se:PointSymbolizer>'
+            '<se:TextSymbolizer><se:Label>x</se:Label><se:LabelPlacement><se:PointPlacement>'
+            '<se:AnchorPoint><se:AnchorPointX>0.5</se:AnchorPointX><se:AnchorPointY>0.5</se:AnchorPointY></se:AnchorPoint>'
+            '<se:Displacement><se:DisplacementX>0</se:DisplacementX><se:DisplacementY>0</se:DisplacementY></se:Displacement>'
+            '</se:PointPlacement></se:LabelPlacement></se:TextSymbolizer>')
+code, log, body = run([], SE_POINT)
+assert "<se:AnchorPointX>0</se:AnchorPointX>" in body, body
+
+# a point label with a real author offset is left untouched
+PU = ('<PointSymbolizer><Graphic/></PointSymbolizer><TextSymbolizer><Label>x</Label><LabelPlacement><PointPlacement>'
+      '<AnchorPoint><AnchorPointX>0.5</AnchorPointX><AnchorPointY>0.5</AnchorPointY></AnchorPoint>'
+      '<Displacement><DisplacementX>5</DisplacementX><DisplacementY>0</DisplacementY></Displacement>'
+      '</PointPlacement></LabelPlacement></TextSymbolizer>')
+code, log, body = run([], PU)
+assert "<AnchorPointX>0.5</AnchorPointX>" in body and "<DisplacementX>5</DisplacementX>" in body, body
+
+# maxAngleDelta already above the floor is left alone
+LINE90 = ('<TextSymbolizer><LabelPlacement><LinePlacement/></LabelPlacement>'
+          '<VendorOption name="maxAngleDelta">120</VendorOption></TextSymbolizer>')
+code, log, body = run([], LINE90)
+assert '"maxAngleDelta">120<' in body, body
+
+# --check must not write sidecar SVGs
+d = tempfile.mkdtemp()
+p = os.path.join(d, "x.sld"); open(p, "w").write(B64)
+subprocess.run([sys.executable, "-I", SCRIPT, "--check", p], capture_output=True)
+assert not [x for x in os.listdir(d) if x.endswith(".svg")], "check must not write sidecars"
 
 print("ok")

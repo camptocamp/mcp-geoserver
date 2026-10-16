@@ -6,3 +6,5 @@ docker/vanilla/additional_libs/*.jar
 docs/superpowers/
 .mvn/wrapper/maven-wrapper.jar
 docker/cloud/libs/
+__pycache__/
+*.pyc
