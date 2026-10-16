@@ -26,10 +26,14 @@ import os
 import re
 import sys
 
-# QGIS name -> GeoTools name. Pure renames: same semantics, same args.
+# Source function name -> GeoTools name. Pure renames: same semantics, same args.
+# Covers both QGIS native export names and GeoCat Bridge names (strToUpper, strToLower),
+# so the fixer cleans either converter's output.
 SAFE_RENAMES = {
     "upper": "strToUpperCase",
     "lower": "strToLowerCase",
+    "strToUpper": "strToUpperCase",   # GeoCat Bridge emits this; GeoServer has no strToUpper
+    "strToLower": "strToLowerCase",   # GeoCat Bridge emits this
     "trim": "strTrim",
     "length": "strLength",
     "concat": "Concatenate",

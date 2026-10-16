@@ -59,6 +59,16 @@ for qname, gname in todo.items():
 
 Report every non-`ok` line to the user: those are parts QGIS could not export or changed. Data-defined properties and shapeburst fills are dropped without a message; name them if the user asks what was lost.
 
+Preferred converter when GeoCat Bridge is installed: Bridge's converter gets hatches right (`shape://slash`) and collects SVG/icon resources to upload, which the native export does not. Use it, then run `fix-sld-functions.py` on its output to fix function names (Bridge emits `strToUpper`, which GeoServer lacks; the fixer now maps it to `strToUpperCase`) and fonts:
+
+```python
+from geocatbridge.libs.bridgestyle import qgis as bs  # Bridge plugin must be installed
+sld, icons, warnings = bs.layerStyleAsSld(layer)   # SLD 1.0; upload icons too
+open(path, "w").write(sld)
+```
+
+Upload Bridge output as `application/vnd.ogc.sld+xml` (it is SLD 1.0, `CssParameter`), upload each path in `icons` to the style's resource dir, and still run `fix-sld-functions.py` for the function and font fixes. See `docs/qgis-to-geoserver-converters.md` for the head-to-head.
+
 Raster layers: the loop above is vector only. For a raster (singleband pseudocolor, paletted), export with `layer.saveSldStyle(path)`, which writes **SLD 1.0**. Do not use `exportSldStyleV3`: its SLD 1.1 `ColorMap` uses the old `ColorMapEntry` list, and GeoServer rejects it with `Parsing failed for ColorMap: Categorize or Interpolate not specified`. Publish the raster as a GeoTIFF coverage store (REST: create the store with JSON `{"coverageStore":{"type":"GeoTIFF","url":"file:/path.tif"}}`, then POST a coverage), set the style, and render-compare as in step 6. Verified: SLD 1.0 uploads 201 and the singleband gradient matches QGIS.
 
 ## 3. Upload with the script
