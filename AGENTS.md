@@ -49,6 +49,33 @@ CI fails when the SonarQube quality gate fails on new code. Write code that pass
 - Coverage on new code stays at 90% or above: every new tool or branch comes with a test. Prefer Mockito or `StubHttpServer` unit tests over `GeoServerSystemTestSupport`, which is slow.
 - Two rules are excluded in `pom.xml` and stay excluded: `java:S110` for Wicket pages (the inheritance depth comes from GeoServer) and `java:S112` on `GsTool.call` (any failure is turned into an MCP error by `ToolAdapter`). Do not add exclusions for anything else; fix the code.
 
+## Security testing
+
+CI runs `.github/workflows/security.yml` on every PR and on push to master, with two jobs:
+
+- `dependency-review` (`actions/dependency-review-action`): PR-only, fails on a dependency vulnerability of `high` severity or above.
+- `snyk` (`snyk/actions/maven-3-jdk-17`): `test --maven-aggregate-project --severity-threshold=high`. Gated on the `SNYK_TOKEN` secret (`if: env.SNYK_TOKEN != ''`), so it no-ops on Dependabot and fork PRs.
+
+The SonarQube quality gate (`.github/workflows/sonarqube.yml`) also gates new code; see "Quality gate (SonarQube)" above. The release workflow (`.github/workflows/release.yml`) runs `snyk monitor` to post the dependency snapshot to Snyk, again gated on `SNYK_TOKEN`.
+
+Secrets (`gh secret list -R camptocamp/mcp-geoserver` shows which are set):
+
+- `SNYK_TOKEN`: Snyk test in CI and `snyk monitor` on release.
+- `SONAR_TOKEN`: SonarQube scan.
+
+Run locally:
+
+- Snyk, if installed and authed: `snyk test --maven-aggregate-project --severity-threshold=high` (same as CI). Covers bundled and transitive deps.
+- `/security-review` skill reviews the pending branch changes; run it before merging security-relevant work.
+
+Live assessment (hands-on test of a running server) house rules:
+
+- Target only localhost (local GeoServer at `http://localhost:8080/geoserver`, MCP at `/mcp`). Never a shared or remote instance.
+- Non-destructive: no delete or modify of real catalog objects.
+- Confine any test objects to a scratch workspace and remove it after.
+- Prove SSRF only against a local listener you control.
+- Never run `gs_reload` on a shared instance.
+
 ## Tool catalogue
 
 Every tool also accepts `verbose: boolean` and declares MCP annotations (read-only, destructive, idempotent) from `ToolHints`.
