@@ -14,7 +14,7 @@ The symbology path mostly holds; the breakage is in labels, expressions, data-de
 | Polygon fill and outline + label | 201 | matches | works | - |
 | Simple field label | 201 | matches | works | - |
 | Data-defined rotation | 201 | matches (orientations vary) | works | - |
-| Data-defined size | 201 | does NOT match: QGIS varies size, GeoServer renders them uniform | degrades | set the size unit explicitly in QGIS; verify, do not assume |
+| Data-defined size | 201 | varies, but at a much smaller scale than QGIS: the biggest marker renders small | degrades | set the symbol size unit in QGIS; verify, do not assume |
 | Expression label with a string function | 500 | n/a | breaks | `fix-sld-functions.py` (rename or rework) |
 | Font marker | 201 | render fails: `Unknown font <name>` when the font is not in the container | breaks at render | install the font in GeoServer (Cloud 3.0.2: `/opt/additional_fonts`) |
 | Label on Postgres `text[]`, one value | 201 | matches | works | - |
@@ -55,11 +55,15 @@ Markers rotated by a field (wind arrows): orientations reproduce; markers render
 | --- | --- |
 | ![wind_pts in QGIS](img/qgis_wind.png) | ![wind_pts in GeoServer](img/gs_wind.png) |
 
-Curved label along a line: the text follows the line on both; GeoServer centres it on the line, QGIS offsets it above.
+Curved label along a line: the text follows the line on both; by default GeoServer centres it on the line while QGIS offsets it above.
 
-| QGIS | GeoServer |
+| QGIS | GeoServer (as exported) |
 | --- | --- |
 | ![lines in QGIS](img/qgis_lines.png) | ![lines in GeoServer](img/gs_lines.png) |
+
+The default looks poor: the label sits on the line and QGIS exports `maxAngleDelta=25`, too low to follow a real bend. Add the GeoServer line-label vendor options (see the skill) and it lifts off the line and follows the curve through its vertices:
+
+![improved line labels in GeoServer](img/gs_lines_improved.png)
 
 Graduated renderer on real data (wind-flow streamlines, 7 speed classes): the classification and color ramp reproduce faithfully.
 
@@ -79,7 +83,7 @@ Safe 1:1 renames the script applies: `upper`, `lower`, `trim`, `length`, `concat
 
 ### Data-defined size renders uniform
 
-`ddl_pts` carries a triangle with data-defined size (`sz` = 4, 8, 12) and rotation (`ang` = 0, 45, 90). In QGIS the three triangles are clearly small, medium, large and rotated. GeoServer reproduces the rotation but renders all three the same small size: the data-defined size did not carry across at the same scale. Check the symbol-size unit in QGIS and render both sides before trusting it.
+`ddl_pts` carries a triangle with data-defined size (`sz` = 4, 8, 12) and rotation (`ang` = 0, 45, 90). In QGIS the three triangles are clearly small, medium, large and rotated. GeoServer reproduces the rotation and does vary the size, but at a much smaller scale: the variation is there (the large one is bigger than the small one) yet compressed, so the biggest QGIS triangle renders small. It is a size-unit/DPI mismatch (QGIS mm vs SLD pixels), not a dropped property. Set the symbol size unit in QGIS and render both sides before trusting it.
 
 ### Font marker needs the font in GeoServer
 
