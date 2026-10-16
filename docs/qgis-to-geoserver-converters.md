@@ -5,7 +5,7 @@ Three ways to turn a QGIS style into GeoServer SLD. The skill can offer them as 
 ## The three
 
 1. **QGIS native** - `layer.exportSldStyleV3()` (QGIS 3.44+) or `saveSldStyle()`. Built into QGIS, no dependency. Outputs SLD 1.1 (`SvgParameter`). The base the other option builds on.
-2. **Ours** - QGIS native export, then `fix-sld-functions.py` (function-name renames, font reconciliation, and detection of the SVG / hatch / size cases). No dependency beyond Python stdlib.
+2. **Ours (default)** - the best-of-both pipeline: use GeoCat Bridge's converter when the plugin is installed (it gets hatches and SVG resources right), otherwise QGIS native, then always run `fix-sld-functions.py` on the result (function-name renames for both QGIS and Bridge names, font reconciliation, SVG / hatch / size detection). Picks the stronger converter per environment and fixes what it misses; no mandatory dependency.
 3. **GeoCat Bridge** - the `bridgestyle` library (QGIS to GeoStyler to SLD), bundled in the Bridge QGIS plugin (`geocatbridge.libs.bridgestyle.qgis.layerStyleAsSld`). Outputs SLD 1.0 (`CssParameter`) and returns the icon resources to upload. Bridge is also an end-to-end publisher (uploads SVGs, creates layers), not a converter only.
 
 ## Head-to-head (verified)
@@ -59,6 +59,5 @@ A `CONVERTER = "qgis" | "ours" | "bridge"` switch in the export step is ~20-30 l
 
 ## Recommendation
 
-- Default to **ours**: zero dependency, correct function names and fonts, fixes or flags every gap.
-- If Bridge is installed and the style is icon-heavy or uses hatches, **Bridge then our `fix-sld-functions.py` on its output** is the best of both: Bridge's resource upload and `shape://` hatch, plus our function fix. One caveat: our fixer maps `upper`, not Bridge's `strToUpper`, so add `strToUpper -> strToUpperCase` (and the other `strToX` names) to `SAFE_RENAMES` before running it on Bridge output.
+**Ours is the default, and it is the best:** it uses Bridge's converter when the plugin is installed (correct hatches, SVG/icon upload) and QGIS native otherwise, then always runs `fix-sld-functions.py`, which gets the function names and fonts right for either converter (it maps both QGIS `upper` and Bridge `strToUpper` to `strToUpperCase`). So you get Bridge's strengths plus our fixes, and it still works with no Bridge installed. Pick plain `qgis` or `bridge` only to see a single converter's raw output. All paths still need the data-defined-size re-injection and the SVG `linearGradient` GraphicFill for gradients; those are QGIS-export limits, not converter-specific.
 - All three still need the data-defined-size re-injection and a gradient workaround (SVG `linearGradient` GraphicFill); those are not converter-specific.

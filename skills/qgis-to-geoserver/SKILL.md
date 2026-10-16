@@ -31,6 +31,8 @@ Any output: stop. Show the user, in bold, `WARNING: this project contains creden
 
 ## 2. Export every style with one `execute_code` call
 
+Default pipeline ("ours"): if the GeoCat Bridge plugin is installed use its converter (better hatches and SVG upload, see below), otherwise QGIS native export, then always run `fix-sld-functions.py` on the result. That is the recommended default; use a single converter only to inspect its raw output.
+
 File basename = GeoServer layer name. Fill `NAMES` with `{qgis layer name: geoserver layer name}` from `gs_list_layers`; leave it empty to export every vector layer under its QGIS name. Set `VERBOSE = True` to keep the SLDs in `./sld` instead of `/tmp/sld`.
 
 ```python
