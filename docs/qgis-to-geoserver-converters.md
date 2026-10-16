@@ -31,9 +31,13 @@ Nobody wins outright:
 - **Bridge** gets the hatch right (`shape://slash`, which native and ours have to patch), and it collects SVG/icon resources and uploads them, which is real value for icon-heavy styles.
 - **All three** drop data-defined/expression size and gradient fill: those are QGIS-export limits, not converter-specific.
 
+## Where they agree (most of the time)
+
+For most techniques the three converters produce an equivalent, working style and render the same: verified identical output for raster singleband pseudocolor (both SLD 1.0, same 7 `ColorMapEntry`), and equal parse results for categorized, graduated, lines, polygons and plain labels. They diverge on only four things: function names, fonts, hatch, and SVG. So a three-way comparison is only meaningful for those; everything else is shown as the QGIS-vs-GeoServer pair in `qgis-vs-geoserver-styling.md`, which already stands in for all three converters.
+
 ## Rendered differences
 
-The two cases where the converters visibly diverge on GeoServer (same layer, same data).
+The cases where the converters visibly diverge on GeoServer (same layer, same data).
 
 Hatch fill: QGIS native exports `horline` (blank); Bridge exports `shape://slash` (renders).
 
