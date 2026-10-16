@@ -25,6 +25,7 @@
     <spring.version>7.0.9</spring.version>
     <spring.security.version>7.1.1</spring.security.version>
     <mcp.sdk.version>2.0.1</mcp.sdk.version>
+    <jackson.version>2.22.3</jackson.version>
     <spring-boot.version>4.1.1</spring-boot.version>
     <wicket.version>10.11.0</wicket.version>
     <jakarta.servlet.version>6.1.0</jakarta.servlet.version>
@@ -35,6 +36,7 @@
     <jsoup.version>1.23.2</jsoup.version>
     <httpclient5.version>5.6.5</httpclient5.version>
     <jacoco.version>0.8.15</jacoco.version>
+    <cyclonedx.version>2.9.1</cyclonedx.version>
     <sonar.projectKey>camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b</sonar.projectKey>
     <sonar.projectName>mcp-geoserver</sonar.projectName>
     <sonar.host.url>https://sast.camptocamp.net</sonar.host.url>
@@ -56,6 +58,14 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- First import wins: pin Jackson 2 ahead of the GeoTools BOM (which brings 2.22.0, with OSV advisories). -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.geotools</groupId>
         <artifactId>gt-platform-dependencies</artifactId>
@@ -240,6 +250,18 @@
             <goals><goal>report</goal></goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+        <version>${cyclonedx.version}</version>
+        <configuration>
+          <outputFormat>json</outputFormat>
+          <outputName>bom</outputName>
+          <includeProvidedScope>false</includeProvidedScope>
+          <includeTestScope>false</includeTestScope>
+          <includeSystemScope>false</includeSystemScope>
+        </configuration>
       </plugin>
     </plugins>
   </build>
