@@ -187,6 +187,8 @@ Before opening a QGIS project, the agent scans it for stored credentials (`passw
 
 For a render-verified, technique-by-technique breakdown of what survives this conversion (with QGIS vs GeoServer screenshots), see [docs/qgis-vs-geoserver-styling.md](docs/qgis-vs-geoserver-styling.md).
 
+The converter is a choice: QGIS native export, ours (native plus `fix-sld-functions.py`), or GeoCat Bridge. They trade off (ours gets function names and fonts right, Bridge gets hatches and SVG upload right); see [docs/qgis-to-geoserver-converters.md](docs/qgis-to-geoserver-converters.md).
+
 ## Rasters on S3, Google Cloud Storage or HTTP
 
 `gs_create_store` with type `GeoTIFF` and `params.url` set to `s3://bucket/key.tif`, `gs://bucket/key.tif` or `https://...` publishes the file as a Cloud Optimized GeoTIFF read in place; nothing is copied to the server. Then `gs_publish_layer` as usual.
