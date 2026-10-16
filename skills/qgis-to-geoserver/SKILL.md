@@ -31,12 +31,13 @@ Any output: stop. Show the user, in bold, `WARNING: this project contains creden
 
 ## 2. Export every style with one `execute_code` call
 
-File basename = GeoServer layer name. Fill `NAMES` with `{qgis layer name: geoserver layer name}` from `gs_list_layers`; leave it empty to export every vector layer under its QGIS name.
+File basename = GeoServer layer name. Fill `NAMES` with `{qgis layer name: geoserver layer name}` from `gs_list_layers`; leave it empty to export every vector layer under its QGIS name. Set `VERBOSE = True` to keep the SLDs in `./sld` instead of `/tmp/sld`.
 
 ```python
 import os
 from qgis.core import Qgis, QgsProject, QgsMapLayer, QgsSldExportContext
-OUT = "/tmp/sld"
+VERBOSE = False  # True: keep the exported SLDs in ./sld for inspection
+OUT = "sld" if VERBOSE else "/tmp/sld"
 NAMES = {}
 os.makedirs(OUT, exist_ok=True)
 layers = QgsProject.instance().mapLayers().values()
