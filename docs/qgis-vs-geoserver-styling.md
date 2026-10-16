@@ -69,6 +69,30 @@ Graduated renderer on real data (wind-flow streamlines, 7 speed classes): the cl
 | --- | --- |
 | ![flow in QGIS](img/qgis_flow.png) | ![flow in GeoServer](img/gs_flow.png) |
 
+## More techniques tested
+
+A second pass covered 16 further techniques (authored in QGIS, exported, uploaded, and rendered). All 16 parse (HTTP 201); the split is again symbology-holds, expressions-and-resources-break.
+
+Works (reproduces):
+
+- Scale/zoom-dependent rules: min/max `ScaleDenominator` is kept, so zoom ranges carry over.
+- Categorized renderer with a color ramp (many classes); graduated renderer by size.
+- Rule-based renderer combining a filter and a scale range.
+- Marker with several stacked symbol layers.
+- Polygon fill opacity.
+- Dashed line with offset (`stroke-dasharray` + `PerpendicularOffset`).
+- Marker or arrow line (`GraphicStroke`).
+- Hatch / line-pattern fill (`GraphicFill` with a well-known hatch).
+- Label with a graphic background (shield).
+- Multi-field concatenated label.
+
+Degrades (parse 201, render wrong):
+
+- Expression-driven fill color: flattened to one static color (same as a data-defined color).
+- Expression-driven size: flattened to a static `Size` (re-inject as an expression, see data-defined size above).
+- Gradient fill: dropped entirely; GeoServer renders nothing (no SLD gradient fill). Use a solid or a hatch.
+- SVG marker and SVG fill: the href is the local QGIS path, so GeoServer draws a square; upload the SVG and rewrite the href to the bare filename.
+
 ## Complex examples
 
 ### Expression label: function names do not match
