@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Canonical instruction file for every AI agent tool. The per-tool files (`CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`) only point here; do not duplicate this content. Codex and opencode read this file natively, so they need no pointer.
+
 Instructions for AI agents and humans working in this repository.
 
 ## What this is
