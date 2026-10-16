@@ -41,6 +41,20 @@ UNSAFE = {
 }
 
 FUNC = re.compile(r'(<ogc:Function\s+name=")([^"]+)(")')
+# External graphic href pointing at a local QGIS path: GeoServer rejects the URI or draws a
+# square. Only a bare filename (resolved from the style's workspace) is safe.
+HREF = re.compile(r'xlink:href="([^"]+)"')
+
+
+def scan_svg(text):
+    bad = []
+    for href in HREF.findall(text):
+        h = href.split("?", 1)[0]
+        if h.startswith(("http://", "https://", "ttf://")):
+            continue  # a real URL, or GeoServer's ttf:// font-mark scheme, is fine
+        if "/" in h or "\\" in h or h.startswith("file:"):
+            bad.append(href)
+    return sorted(set(bad))
 
 
 def process(text):
@@ -76,17 +90,22 @@ def main(argv):
         with open(f, encoding="utf-8") as fh:
             text = fh.read()
         new, renamed, blocked = process(text)
+        svg = scan_svg(text)
         if blocked:
             unsafe_found = True
             for name in sorted(set(blocked)):
                 print(f"{os.path.basename(f)}: UNSAFE {name}: {UNSAFE[name]}")
+        if svg:
+            unsafe_found = True
+            for href in svg:
+                print(f"{os.path.basename(f)}: SVG {href}: not a bare filename; upload the SVG to the style's workspace and rewrite href to the bare name (see SKILL.md step 4)")
         if renamed and not check:
             with open(f, "w", encoding="utf-8") as fh:
                 fh.write(new)
         tag = "would rename" if check else "renamed"
         if renamed:
             print(f"{os.path.basename(f)}: {tag} {', '.join(sorted(set(renamed)))}")
-        if not renamed and not blocked:
+        if not renamed and not blocked and not svg:
             print(f"{os.path.basename(f)}: ok")
     return 2 if unsafe_found else 0
 
