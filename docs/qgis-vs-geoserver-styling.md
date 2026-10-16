@@ -14,7 +14,7 @@ The symbology path mostly holds; the breakage is in labels, expressions, data-de
 | Polygon fill and outline + label | 201 | matches | works | - |
 | Simple field label | 201 | matches | works | - |
 | Data-defined rotation | 201 | matches (orientations vary) | works | - |
-| Data-defined size | 201 | does NOT match: QGIS varies size, GeoServer renders them uniform | degrades | set the size unit explicitly in QGIS; verify, do not assume |
+| Data-defined size | 201 | dropped: QGIS exports a static `Size`, so GeoServer draws every marker the same; re-injecting the expression restores it | degrades then fixable | re-inject `Size` as `field * 3.78` (mm to px) |
 | Expression label with a string function | 500 | n/a | breaks | `fix-sld-functions.py` (rename or rework) |
 | Font marker | 201 | render fails: `Unknown font <name>` when the font is not in the container | breaks at render | install the font in GeoServer (Cloud 3.0.2: `/opt/additional_fonts`) |
 | Label on Postgres `text[]`, one value | 201 | matches | works | - |
@@ -41,31 +41,83 @@ Categorized renderer plus labels: reproduces (minor marker-size and label-offset
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![cat_pts in QGIS](img/qgis_cat.png) | ![cat_pts in GeoServer](img/gs_cat.png) |
+| ![cat_pts in QGIS](img/cat_qgis.png) | ![cat_pts in GeoServer](img/cat_gs.png) |
 
-Data-defined size and rotation: QGIS varies both; GeoServer keeps the rotation but renders every marker the same small size.
+Data-defined size and rotation: QGIS varies both. GeoServer keeps the rotation, but QGIS drops the size on export (static `Size`), so by default every marker is the same; shown here after re-injecting the size expression, which restores the variation to match QGIS.
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![ddl_pts in QGIS](img/qgis_ddl.png) | ![ddl_pts in GeoServer](img/gs_ddl.png) |
+| ![ddl_pts in QGIS](img/ddl_qgis.png) | ![ddl_pts in GeoServer](img/ddl_gs.png) |
 
 Markers rotated by a field (wind arrows): orientations reproduce; markers render a touch smaller.
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![wind_pts in QGIS](img/qgis_wind.png) | ![wind_pts in GeoServer](img/gs_wind.png) |
+| ![wind_pts in QGIS](img/wind_qgis.png) | ![wind_pts in GeoServer](img/wind_gs.png) |
 
-Curved label along a line: the text follows the line on both; GeoServer centres it on the line, QGIS offsets it above.
+Curved label along a line: the text follows the line on both; by default GeoServer centres it on the line while QGIS offsets it above.
 
-| QGIS | GeoServer |
+As exported, the default looks poor: the label sits on the line and QGIS writes `maxAngleDelta=25`, too low to follow a real bend. Adding the GeoServer line-label vendor options (see the skill) lifts it off the line and follows the curve. Use a NEGATIVE `PerpendicularOffset` so the label sits above the line as in QGIS (positive puts it below). One limitation: `followLine` tracks smooth curvature only; at a sharp polyline vertex GeoServer will not kink the text, it straightens it onto a run or drops it (smooth the geometry if a sharp corner must be labelled).
+
+| QGIS | GeoServer (with line-label vendor options) |
 | --- | --- |
-| ![lines in QGIS](img/qgis_lines.png) | ![lines in GeoServer](img/gs_lines.png) |
+| ![lines in QGIS](img/lines_qgis.png) | ![lines in GeoServer](img/lines_gs.png) |
 
 Graduated renderer on real data (wind-flow streamlines, 7 speed classes): the classification and color ramp reproduce faithfully.
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![flow in QGIS](img/qgis_flow.png) | ![flow in GeoServer](img/gs_flow.png) |
+| ![flow in QGIS](img/flow_qgis.png) | ![flow in GeoServer](img/flow_gs.png) |
+
+## More techniques tested
+
+A second pass covered 16 further techniques (authored in QGIS, exported, uploaded, and rendered). All 16 parse (HTTP 201); the split is again symbology-holds, expressions-and-resources-break.
+
+Works (reproduces):
+
+- Scale/zoom-dependent rules: min/max `ScaleDenominator` is kept, so zoom ranges carry over.
+- Categorized renderer with a color ramp (many classes); graduated renderer by size.
+- Rule-based renderer combining a filter and a scale range.
+- Marker with several stacked symbol layers.
+- Polygon fill opacity.
+- Dashed line with offset (`stroke-dasharray` + `PerpendicularOffset`).
+- Label with a graphic background (shield).
+- Multi-field concatenated label.
+
+Degrades (parse 201, render wrong):
+
+- Expression-driven fill color: flattened to one static color (same as a data-defined color).
+- Expression-driven size: flattened to a static `Size` (re-inject as an expression, see data-defined size above).
+- Gradient fill: QGIS cannot export it. The export warns `Symbol layer GradientFill cannot be converted to SLD` and writes an empty rule (a `Name` with no symbolizer), so GeoServer has nothing to draw and the polygon is blank. SLD has no gradient fill, but an SVG `linearGradient` referenced as a `GraphicFill` approximates one. It tiles from the map origin, so a faint seam can appear and a true per-feature gradient is not achievable; otherwise use a solid colour or a hatch.
+- SVG marker and SVG fill: the href is the local QGIS path, so GeoServer draws a square; upload the SVG and rewrite the href to the bare filename.
+- Hatch / line-pattern fill: QGIS exports `<se:WellKnownName>horline</se:WellKnownName>`, which GeoServer does not know, so the polygon renders blank. Rewrite it to GeoServer's hatch syntax `shape://horline` (or `shape://slash`, etc.) and it renders.
+- Marker / arrow line: the geometry follows, but the marker spacing differs: QGIS spaces the markers apart, GeoServer packs them dense. Set the `GraphicStroke` graphic size and gap to match the QGIS interval.
+
+### Rendered samples
+
+SVG marker: by default GeoServer draws a square (the href is the local QGIS path). The GeoServer image below is after uploading the SVG and using the bare href, which matches QGIS.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![svg marker QGIS](img/svg_qgis.png) | ![svg marker GeoServer](img/svg_gs.png) |
+
+Gradient fill: QGIS cannot export it, so GeoServer renders nothing by default. The GeoServer image below uses the SVG `linearGradient` GraphicFill workaround (faint seam from tiling).
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![gradient QGIS](img/grad_qgis.png) | ![gradient GeoServer](img/grad_gs.png) |
+
+Hatch fill: blank on GeoServer as exported (`horline`); rewritten to `shape://slash` it matches the QGIS diagonal hatch.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![hatch QGIS](img/hatch_qgis.png) | ![hatch GeoServer](img/hatch_gs.png) |
+
+Marker line: geometry follows, but the marker spacing differs (QGIS spaces them, GeoServer packs them dense).
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![marker line QGIS](img/mline_qgis.png) | ![marker line GeoServer](img/mline_gs.png) |
 
 ## Complex examples
 
@@ -79,7 +131,7 @@ Safe 1:1 renames the script applies: `upper`, `lower`, `trim`, `length`, `concat
 
 ### Data-defined size renders uniform
 
-`ddl_pts` carries a triangle with data-defined size (`sz` = 4, 8, 12) and rotation (`ang` = 0, 45, 90). In QGIS the three triangles are clearly small, medium, large and rotated. GeoServer reproduces the rotation but renders all three the same small size: the data-defined size did not carry across at the same scale. Check the symbol-size unit in QGIS and render both sides before trusting it.
+`ddl_pts` carries a triangle with data-defined size (`sz` = 4, 8, 12) and rotation (`ang` = 0, 45, 90). In QGIS the three triangles are clearly small, medium, large and rotated. QGIS exports the rotation as an expression but drops the size: the SLD carries a static `<se:Size>7</se:Size>`, so GeoServer draws all three the same. Re-inject the size as an expression, `<se:Size><ogc:Mul><ogc:PropertyName>sz</ogc:PropertyName><ogc:Literal>3.78</ogc:Literal></ogc:Mul></se:Size>` (3.78 = mm to px at 96 DPI), and the variation returns and matches QGIS, as shown above.
 
 ### Font marker needs the font in GeoServer
 
@@ -95,7 +147,7 @@ A singleband pseudocolor raster exported as SLD 1.1 (`exportSldStyleV3`) uses th
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![raster in QGIS](img/qgis_ras.png) | ![raster in GeoServer](img/gs_ras.png) |
+| ![raster in QGIS](img/ras_qgis.png) | ![raster in GeoServer](img/ras_gs.png) |
 
 ### Data-defined color and time are flattened at export
 
