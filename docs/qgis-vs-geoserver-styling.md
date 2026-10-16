@@ -81,7 +81,6 @@ Works (reproduces):
 - Marker with several stacked symbol layers.
 - Polygon fill opacity.
 - Dashed line with offset (`stroke-dasharray` + `PerpendicularOffset`).
-- Marker or arrow line (`GraphicStroke`).
 - Label with a graphic background (shield).
 - Multi-field concatenated label.
 
@@ -89,9 +88,10 @@ Degrades (parse 201, render wrong):
 
 - Expression-driven fill color: flattened to one static color (same as a data-defined color).
 - Expression-driven size: flattened to a static `Size` (re-inject as an expression, see data-defined size above).
-- Gradient fill: dropped entirely; GeoServer renders nothing (no SLD gradient fill). Use a solid or a hatch.
+- Gradient fill: QGIS cannot export it. The export warns `Symbol layer GradientFill cannot be converted to SLD` and writes an empty rule (a `Name` with no symbolizer), so GeoServer has nothing to draw and the polygon is blank. There is no SLD gradient fill, so no server-side fix: use a solid colour or a hatch, or a styled raster if a gradient is essential.
 - SVG marker and SVG fill: the href is the local QGIS path, so GeoServer draws a square; upload the SVG and rewrite the href to the bare filename.
 - Hatch / line-pattern fill: QGIS exports `<se:WellKnownName>horline</se:WellKnownName>`, which GeoServer does not know, so the polygon renders blank. Rewrite it to GeoServer's hatch syntax `shape://horline` (or `shape://slash`, etc.) and it renders.
+- Marker / arrow line: the geometry follows, but the marker spacing differs: QGIS spaces the markers apart, GeoServer packs them dense. Set the `GraphicStroke` graphic size and gap to match the QGIS interval.
 
 ### Rendered samples
 
@@ -101,11 +101,11 @@ SVG marker: QGIS draws the SVG, GeoServer draws a square (local href).
 | --- | --- |
 | ![svg marker QGIS](img/cx_svg_qgis.png) | ![svg marker GeoServer](img/cx_svg_gs.png) |
 
-Gradient fill: QGIS fills with the gradient, GeoServer renders nothing.
+Gradient fill: QGIS fills with the gradient, GeoServer renders nothing (QGIS cannot export it). The workaround is an SVG `linearGradient` as a `GraphicFill`, which does render a gradient (faint seam where the tile repeats).
 
-| QGIS | GeoServer |
-| --- | --- |
-| ![gradient QGIS](img/cx_grad_qgis.png) | ![gradient GeoServer](img/cx_grad_gs.png) |
+| QGIS | GeoServer (as exported) | GeoServer (SVG linearGradient GraphicFill) |
+| --- | --- | --- |
+| ![gradient QGIS](img/cx_grad_qgis.png) | ![gradient GeoServer blank](img/cx_grad_gs.png) | ![gradient via svg](img/cx_grad_svg.png) |
 
 Hatch fill: as exported it is blank on GeoServer; rewriting `horline` to `shape://horline` renders it.
 
@@ -113,7 +113,7 @@ Hatch fill: as exported it is blank on GeoServer; rewriting `horline` to `shape:
 | --- | --- |
 | ![hatch blank](img/cx_hatch_gs.png) | ![hatch fixed](img/cx_hatch_fix.png) |
 
-Marker line: reproduces.
+Marker line: geometry follows, but the marker spacing differs (QGIS spaces them, GeoServer packs them dense).
 
 | QGIS | GeoServer |
 | --- | --- |
