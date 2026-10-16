@@ -41,19 +41,19 @@ Categorized renderer plus labels: reproduces (minor marker-size and label-offset
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![cat_pts in QGIS](img/qgis_cat.png) | ![cat_pts in GeoServer](img/gs_cat.png) |
+| ![cat_pts in QGIS](img/cat_qgis.png) | ![cat_pts in GeoServer](img/cat_gs.png) |
 
 Data-defined size and rotation: QGIS varies both. GeoServer keeps the rotation, but QGIS drops the size on export (static `Size`), so by default every marker is the same; shown here after re-injecting the size expression, which restores the variation to match QGIS.
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![ddl_pts in QGIS](img/qgis_ddl.png) | ![ddl_pts in GeoServer](img/gs_ddl.png) |
+| ![ddl_pts in QGIS](img/ddl_qgis.png) | ![ddl_pts in GeoServer](img/ddl_gs.png) |
 
 Markers rotated by a field (wind arrows): orientations reproduce; markers render a touch smaller.
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![wind_pts in QGIS](img/qgis_wind.png) | ![wind_pts in GeoServer](img/gs_wind.png) |
+| ![wind_pts in QGIS](img/wind_qgis.png) | ![wind_pts in GeoServer](img/wind_gs.png) |
 
 Curved label along a line: the text follows the line on both; by default GeoServer centres it on the line while QGIS offsets it above.
 
@@ -61,13 +61,13 @@ As exported, the default looks poor: the label sits on the line and QGIS writes 
 
 | QGIS | GeoServer (with line-label vendor options) |
 | --- | --- |
-| ![lines in QGIS](img/qgis_lines.png) | ![lines in GeoServer](img/gs_lines.png) |
+| ![lines in QGIS](img/lines_qgis.png) | ![lines in GeoServer](img/lines_gs.png) |
 
 Graduated renderer on real data (wind-flow streamlines, 7 speed classes): the classification and color ramp reproduce faithfully.
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![flow in QGIS](img/qgis_flow.png) | ![flow in GeoServer](img/gs_flow.png) |
+| ![flow in QGIS](img/flow_qgis.png) | ![flow in GeoServer](img/flow_gs.png) |
 
 ## More techniques tested
 
@@ -88,36 +88,36 @@ Degrades (parse 201, render wrong):
 
 - Expression-driven fill color: flattened to one static color (same as a data-defined color).
 - Expression-driven size: flattened to a static `Size` (re-inject as an expression, see data-defined size above).
-- Gradient fill: QGIS cannot export it. The export warns `Symbol layer GradientFill cannot be converted to SLD` and writes an empty rule (a `Name` with no symbolizer), so GeoServer has nothing to draw and the polygon is blank. There is no SLD gradient fill, so no server-side fix: use a solid colour or a hatch, or a styled raster if a gradient is essential.
+- Gradient fill: QGIS cannot export it. The export warns `Symbol layer GradientFill cannot be converted to SLD` and writes an empty rule (a `Name` with no symbolizer), so GeoServer has nothing to draw and the polygon is blank. SLD has no gradient fill, but an SVG `linearGradient` referenced as a `GraphicFill` approximates one. It tiles from the map origin, so a faint seam can appear and a true per-feature gradient is not achievable; otherwise use a solid colour or a hatch.
 - SVG marker and SVG fill: the href is the local QGIS path, so GeoServer draws a square; upload the SVG and rewrite the href to the bare filename.
 - Hatch / line-pattern fill: QGIS exports `<se:WellKnownName>horline</se:WellKnownName>`, which GeoServer does not know, so the polygon renders blank. Rewrite it to GeoServer's hatch syntax `shape://horline` (or `shape://slash`, etc.) and it renders.
 - Marker / arrow line: the geometry follows, but the marker spacing differs: QGIS spaces the markers apart, GeoServer packs them dense. Set the `GraphicStroke` graphic size and gap to match the QGIS interval.
 
 ### Rendered samples
 
-SVG marker: QGIS draws the SVG, GeoServer draws a square (local href).
+SVG marker: by default GeoServer draws a square (the href is the local QGIS path). The GeoServer image below is after uploading the SVG and using the bare href, which matches QGIS.
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![svg marker QGIS](img/cx_svg_qgis.png) | ![svg marker GeoServer](img/cx_svg_gs.png) |
+| ![svg marker QGIS](img/svg_qgis.png) | ![svg marker GeoServer](img/svg_gs.png) |
 
-Gradient fill: QGIS fills with the gradient, GeoServer renders nothing (QGIS cannot export it). The workaround is an SVG `linearGradient` as a `GraphicFill`, which does render a gradient (faint seam where the tile repeats).
+Gradient fill: QGIS cannot export it, so GeoServer renders nothing by default. The GeoServer image below uses the SVG `linearGradient` GraphicFill workaround (faint seam from tiling).
 
-| QGIS | GeoServer (as exported) | GeoServer (SVG linearGradient GraphicFill) |
-| --- | --- | --- |
-| ![gradient QGIS](img/cx_grad_qgis.png) | ![gradient GeoServer blank](img/cx_grad_gs.png) | ![gradient via svg](img/cx_grad_svg.png) |
-
-Hatch fill: as exported it is blank on GeoServer; rewriting `horline` to `shape://horline` renders it.
-
-| GeoServer (as exported) | GeoServer (shape://horline) |
+| QGIS | GeoServer |
 | --- | --- |
-| ![hatch blank](img/cx_hatch_gs.png) | ![hatch fixed](img/cx_hatch_fix.png) |
+| ![gradient QGIS](img/grad_qgis.png) | ![gradient GeoServer](img/grad_gs.png) |
+
+Hatch fill: blank on GeoServer as exported (`horline`); rewritten to `shape://slash` it matches the QGIS diagonal hatch.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![hatch QGIS](img/hatch_qgis.png) | ![hatch GeoServer](img/hatch_gs.png) |
 
 Marker line: geometry follows, but the marker spacing differs (QGIS spaces them, GeoServer packs them dense).
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![marker line QGIS](img/cx_mline_qgis.png) | ![marker line GeoServer](img/cx_mline_gs.png) |
+| ![marker line QGIS](img/mline_qgis.png) | ![marker line GeoServer](img/mline_gs.png) |
 
 ## Complex examples
 
@@ -147,7 +147,7 @@ A singleband pseudocolor raster exported as SLD 1.1 (`exportSldStyleV3`) uses th
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![raster in QGIS](img/qgis_ras.png) | ![raster in GeoServer](img/gs_ras.png) |
+| ![raster in QGIS](img/ras_qgis.png) | ![raster in GeoServer](img/ras_gs.png) |
 
 ### Data-defined color and time are flattened at export
 
