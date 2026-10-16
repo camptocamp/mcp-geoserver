@@ -82,7 +82,6 @@ Works (reproduces):
 - Polygon fill opacity.
 - Dashed line with offset (`stroke-dasharray` + `PerpendicularOffset`).
 - Marker or arrow line (`GraphicStroke`).
-- Hatch / line-pattern fill (`GraphicFill` with a well-known hatch).
 - Label with a graphic background (shield).
 - Multi-field concatenated label.
 
@@ -92,6 +91,33 @@ Degrades (parse 201, render wrong):
 - Expression-driven size: flattened to a static `Size` (re-inject as an expression, see data-defined size above).
 - Gradient fill: dropped entirely; GeoServer renders nothing (no SLD gradient fill). Use a solid or a hatch.
 - SVG marker and SVG fill: the href is the local QGIS path, so GeoServer draws a square; upload the SVG and rewrite the href to the bare filename.
+- Hatch / line-pattern fill: QGIS exports `<se:WellKnownName>horline</se:WellKnownName>`, which GeoServer does not know, so the polygon renders blank. Rewrite it to GeoServer's hatch syntax `shape://horline` (or `shape://slash`, etc.) and it renders.
+
+### Rendered samples
+
+SVG marker: QGIS draws the SVG, GeoServer draws a square (local href).
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![svg marker QGIS](img/cx_svg_qgis.png) | ![svg marker GeoServer](img/cx_svg_gs.png) |
+
+Gradient fill: QGIS fills with the gradient, GeoServer renders nothing.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![gradient QGIS](img/cx_grad_qgis.png) | ![gradient GeoServer](img/cx_grad_gs.png) |
+
+Hatch fill: as exported it is blank on GeoServer; rewriting `horline` to `shape://horline` renders it.
+
+| GeoServer (as exported) | GeoServer (shape://horline) |
+| --- | --- |
+| ![hatch blank](img/cx_hatch_gs.png) | ![hatch fixed](img/cx_hatch_fix.png) |
+
+Marker line: reproduces.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![marker line QGIS](img/cx_mline_qgis.png) | ![marker line GeoServer](img/cx_mline_gs.png) |
 
 ## Complex examples
 
