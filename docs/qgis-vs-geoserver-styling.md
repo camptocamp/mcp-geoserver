@@ -28,7 +28,7 @@ The symbology path mostly holds; the breakage is in labels, expressions, data-de
 | Curved label along a line | 201 | follows the line; GeoServer centers it on the line, QGIS offsets above | works | - |
 | Data-defined color (`ramp_color`, expression fill) | 201 | NOT dynamic: exported as one static color | degrades | rebuild as an SLD `Interpolate`/`Recode` by hand, or accept static |
 | Time-dependent expression (`now()`, `format_date(now())`) | 201 | frozen to the export-date literal, never re-evaluated | degrades | compute server-side or avoid time in the label |
-| Raster singleband pseudocolor | 500 as SLD 1.1, 201 as SLD 1.0 | matches (via SLD 1.0) | works | export raster as SLD 1.0, not 1.1 |
+| Raster singleband pseudocolor | 500 as SLD 1.1, 201 as SLD 1.0 | matches (via SLD 1.0) | works | export SLD 1.0; request `interpolations=bilinear` so it is not blocky |
 | Blend modes, layer opacity | - | no SLD equivalent, dropped | not portable | - |
 
 Four of these only show up when you render, never when you parse: data-defined size, data-defined color, a time-dependent expression, and the font marker all upload as 201 and then render wrong, frozen, or failing. Parse-only validation (an upload 201) is not enough; render and compare.
@@ -143,11 +143,19 @@ A Postgres array column labels cleanly only when a feature holds one value; mult
 
 ### Raster color map needs SLD 1.0, not 1.1
 
-A singleband pseudocolor raster exported as SLD 1.1 (`exportSldStyleV3`) uses the old `ColorMapEntry` list inside an SE 1.1 document, which GeoServer rejects: `Parsing failed for ColorMap: Categorize or Interpolate not specified`. The same style exported as SLD 1.0 (`saveSldStyle`) uploads 201 and renders identically to QGIS. For rasters, export 1.0; publish the data as a GeoTIFF coverage store.
+A singleband pseudocolor raster exported as SLD 1.1 (`exportSldStyleV3`) uses the old `ColorMapEntry` list inside an SE 1.1 document, which GeoServer rejects: `Parsing failed for ColorMap: Categorize or Interpolate not specified`. Export it as SLD 1.0 (`saveSldStyle`) and publish the data as a GeoTIFF coverage store. One render caveat: GeoServer resamples nearest-neighbour by default (blocky) while QGIS resamples smoothly, so request `interpolations=bilinear` (or set the layer default interpolation) to match. Real wind-model rasters from `testdata/wind/wind_demo.qgz`:
+
+Wind speed (m/s):
 
 | QGIS | GeoServer |
 | --- | --- |
-| ![raster in QGIS](img/ras_qgis.png) | ![raster in GeoServer](img/ras_gs.png) |
+| ![speed QGIS](img/speed_qgis.png) | ![speed GeoServer](img/speed_gs.png) |
+
+Pressure at 80 m:
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![pressure QGIS](img/pressure_qgis.png) | ![pressure GeoServer](img/pressure_gs.png) |
 
 ### Data-defined color and time are flattened at export
 
