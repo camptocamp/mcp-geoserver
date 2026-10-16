@@ -19,9 +19,31 @@ The symbology path mostly holds; the breakage is in labels, expressions, data-de
 | Label on Postgres `text[]`, one value | 201 | matches | works | - |
 | Label on Postgres `text[]`, many values | 201 | `[Ljava.lang.String@...]` | breaks (visual) | join to a scalar before labelling |
 | SVG marker from a local QGIS path | varies | href GeoServer cannot resolve, draws a square | breaks | upload the SVG, rewrite href to the bare name |
+| Rule-based renderer with ELSE | 201 | matches | works | - |
+| Dashed line (custom dash) | 201 | matches | works | - |
+| Marker line (markers along a line) | 201 | `GraphicStroke`, matches | works | - |
+| Multiline label (`char(10)`) | 201 | real newline via `Concatenate`, matches | works | - |
+| Data-defined color (`ramp_color`, expression fill) | 201 | NOT dynamic: exported as one static color | degrades | rebuild as an SLD `Interpolate`/`Recode` by hand, or accept static |
+| Time-dependent expression (`now()`, `format_date(now())`) | 201 | frozen to the export-date literal, never re-evaluated | degrades | compute server-side or avoid time in the label |
 | Blend modes, layer opacity | - | no SLD equivalent, dropped | not portable | - |
 
-Two of these only show up when you render, never when you parse: data-defined size and the font marker both upload as 201 and then render wrong or fail. Parse-only validation (`gs_check_layer` on an empty style, or an upload 201) is not enough; render and compare.
+Four of these only show up when you render, never when you parse: data-defined size, data-defined color, a time-dependent expression, and the font marker all upload as 201 and then render wrong, frozen, or failing. Parse-only validation (an upload 201) is not enough; render and compare.
+
+## Rendered comparison
+
+Same fixture layer, left rendered by QGIS, right by GeoServer from the exported SLD.
+
+Categorized renderer plus labels: reproduces (minor marker-size and label-offset differences).
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![cat_pts in QGIS](img/qgis_cat.png) | ![cat_pts in GeoServer](img/gs_cat.png) |
+
+Data-defined size and rotation: QGIS varies both; GeoServer keeps the rotation but renders every marker the same small size.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![ddl_pts in QGIS](img/qgis_ddl.png) | ![ddl_pts in GeoServer](img/gs_ddl.png) |
 
 ## Complex examples
 
@@ -44,6 +66,15 @@ Safe 1:1 renames the script applies: `upper`, `lower`, `trim`, `length`, `concat
 ### Array column label
 
 A Postgres array column labels cleanly only when a feature holds one value; multiple values render as `[Ljava.lang.String@...]`. GeoServer has no `array_to_string`, `item()` or `col[1]` in SLD or CQL. Fix in the data: a generated column `array_to_string(col, ', ')` (needs an IMMUTABLE wrapper, the stock function is only STABLE) or a SQL view, then label that scalar. (GeoPackage has no array type, so this one is PostGIS only and not in the fixture.)
+
+### Data-defined color and time are flattened at export
+
+QGIS evaluates some expressions once, at export, instead of emitting a dynamic SLD function:
+
+- A data-defined fill `ramp_color('Viridis', "v"/20)` exports as a single static `fill` color; the per-feature colour is gone. To keep it, hand-write an SLD `Interpolate` or `Recode` on the attribute.
+- A label `format_date(now(), 'yyyy-MM-dd')` exports as the literal export date (for example `2026-10-16`), so every render shows that frozen date, not the current one.
+
+Both upload as 201 and look fine in isolation; only a render against real data (or reading the exported SLD) shows the value is static.
 
 ## Reproduce
 
