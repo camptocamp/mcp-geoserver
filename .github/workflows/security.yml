@@ -32,9 +32,10 @@ jobs:
           command: test
           args: --maven-aggregate-project --severity-threshold=high
 
-  # Snyk-independent CVE gate: scans the resolved Maven dependencies against the NVD.
-  # Runs with or without a token, so it still gates Dependabot and fork PRs where SNYK_TOKEN is absent.
-  owasp:
+  # Snyk-independent CVE gate: scans the app dependencies against the OSV database (osv.dev).
+  # No API key, no vulnerability DB download. Runs with or without a token, so it still gates
+  # Dependabot and fork PRs where SNYK_TOKEN is absent.
+  osv:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,17 +43,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Generate CycloneDX SBOM
+        # Aggregate BOM over all modules; provided scope (GeoServer/GeoTools/Spring, shipped by the
+        # host) and test scope are excluded in pom.xml, so only bundled/app deps are scanned.
+        run: ./mvnw -q -B -ntp -DskipTests cyclonedx:makeAggregateBom
+      - name: Scan SBOM against OSV
+        uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
         with:
-          # NVD mirror is large and slow to build; reuse it across runs.
-          path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: ${{ runner.os }}-owasp-nvd
-      - name: OWASP dependency-check
-        # No nvdApiKey means NVD rate-limits the first sync hard; set the NVD_API_KEY secret to speed it up.
-        run: >
-          ./mvnw -B -ntp org.owasp:dependency-check-maven:12.1.0:aggregate
-          -DfailBuildOnCVSS=7
-          -DskipProvidedScope=true
-          -DnvdApiKey="${{ secrets.NVD_API_KEY }}"
-          -Dformats=HTML
-          -DdataDirectory="$HOME/.m2/repository/org/owasp/dependency-check-data"
+          scan-args: |-
+            scan
+            source
+            --lockfile=./target/bom.json
