@@ -14,7 +14,7 @@ The symbology path mostly holds; the breakage is in labels, expressions, data-de
 | Polygon fill and outline + label | 201 | matches | works | - |
 | Simple field label | 201 | matches | works | - |
 | Data-defined rotation | 201 | matches (orientations vary) | works | - |
-| Data-defined size | 201 | varies, but at a much smaller scale than QGIS: the biggest marker renders small | degrades | set the symbol size unit in QGIS; verify, do not assume |
+| Data-defined size | 201 | dropped: QGIS exports a static `Size`, so GeoServer draws every marker the same; re-injecting the expression restores it | degrades then fixable | re-inject `Size` as `field * 3.78` (mm to px) |
 | Expression label with a string function | 500 | n/a | breaks | `fix-sld-functions.py` (rename or rework) |
 | Font marker | 201 | render fails: `Unknown font <name>` when the font is not in the container | breaks at render | install the font in GeoServer (Cloud 3.0.2: `/opt/additional_fonts`) |
 | Label on Postgres `text[]`, one value | 201 | matches | works | - |
@@ -43,7 +43,7 @@ Categorized renderer plus labels: reproduces (minor marker-size and label-offset
 | --- | --- |
 | ![cat_pts in QGIS](img/qgis_cat.png) | ![cat_pts in GeoServer](img/gs_cat.png) |
 
-Data-defined size and rotation: QGIS varies both; GeoServer keeps the rotation but renders every marker the same small size.
+Data-defined size and rotation: QGIS varies both. GeoServer keeps the rotation, but QGIS drops the size on export (static `Size`), so by default every marker is the same; shown here after re-injecting the size expression, which restores the variation to match QGIS.
 
 | QGIS | GeoServer |
 | --- | --- |
@@ -57,13 +57,11 @@ Markers rotated by a field (wind arrows): orientations reproduce; markers render
 
 Curved label along a line: the text follows the line on both; by default GeoServer centres it on the line while QGIS offsets it above.
 
-| QGIS | GeoServer (as exported) |
+As exported, the default looks poor: the label sits on the line and QGIS writes `maxAngleDelta=25`, too low to follow a real bend. Adding the GeoServer line-label vendor options (see the skill) lifts it off the line and follows the curve through its vertices:
+
+| QGIS | GeoServer (with line-label vendor options) |
 | --- | --- |
 | ![lines in QGIS](img/qgis_lines.png) | ![lines in GeoServer](img/gs_lines.png) |
-
-The default looks poor: the label sits on the line and QGIS exports `maxAngleDelta=25`, too low to follow a real bend. Add the GeoServer line-label vendor options (see the skill) and it lifts off the line and follows the curve through its vertices:
-
-![improved line labels in GeoServer](img/gs_lines_improved.png)
 
 Graduated renderer on real data (wind-flow streamlines, 7 speed classes): the classification and color ramp reproduce faithfully.
 
@@ -83,7 +81,7 @@ Safe 1:1 renames the script applies: `upper`, `lower`, `trim`, `length`, `concat
 
 ### Data-defined size renders uniform
 
-`ddl_pts` carries a triangle with data-defined size (`sz` = 4, 8, 12) and rotation (`ang` = 0, 45, 90). In QGIS the three triangles are clearly small, medium, large and rotated. GeoServer reproduces the rotation and does vary the size, but at a much smaller scale: the variation is there (the large one is bigger than the small one) yet compressed, so the biggest QGIS triangle renders small. It is a size-unit/DPI mismatch (QGIS mm vs SLD pixels), not a dropped property. Set the symbol size unit in QGIS and render both sides before trusting it.
+`ddl_pts` carries a triangle with data-defined size (`sz` = 4, 8, 12) and rotation (`ang` = 0, 45, 90). In QGIS the three triangles are clearly small, medium, large and rotated. QGIS exports the rotation as an expression but drops the size: the SLD carries a static `<se:Size>7</se:Size>`, so GeoServer draws all three the same. Re-inject the size as an expression, `<se:Size><ogc:Mul><ogc:PropertyName>sz</ogc:PropertyName><ogc:Literal>3.78</ogc:Literal></ogc:Mul></se:Size>` (3.78 = mm to px at 96 DPI), and the variation returns and matches QGIS, as shown above.
 
 ### Font marker needs the font in GeoServer
 
