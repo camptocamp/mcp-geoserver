@@ -25,6 +25,7 @@
     <spring.version>7.0.9</spring.version>
     <spring.security.version>7.1.1</spring.security.version>
     <mcp.sdk.version>2.0.1</mcp.sdk.version>
+    <jackson.version>2.22.3</jackson.version>
     <spring-boot.version>4.1.1</spring-boot.version>
     <wicket.version>10.11.0</wicket.version>
     <jakarta.servlet.version>6.1.0</jakarta.servlet.version>
@@ -56,6 +57,14 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- First import wins: pin Jackson 2 ahead of the GeoTools BOM (which brings 2.22.0, with OSV advisories). -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.geotools</groupId>
         <artifactId>gt-platform-dependencies</artifactId>
