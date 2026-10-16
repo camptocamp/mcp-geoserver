@@ -57,7 +57,7 @@ Markers rotated by a field (wind arrows): orientations reproduce; markers render
 
 Curved label along a line: the text follows the line on both; by default GeoServer centres it on the line while QGIS offsets it above.
 
-As exported, the default looks poor: the label sits on the line and QGIS writes `maxAngleDelta=25`, too low to follow a real bend. Adding the GeoServer line-label vendor options (see the skill) lifts it off the line and follows the curve through its vertices:
+As exported, the default looks poor: the label sits on the line and QGIS writes `maxAngleDelta=25`, too low to follow a real bend. Adding the GeoServer line-label vendor options (see the skill) lifts it off the line and follows the curve. Use a NEGATIVE `PerpendicularOffset` so the label sits above the line as in QGIS (positive puts it below). One limitation: `followLine` tracks smooth curvature only; at a sharp polyline vertex GeoServer will not kink the text, it straightens it onto a run or drops it (smooth the geometry if a sharp corner must be labelled).
 
 | QGIS | GeoServer (with line-label vendor options) |
 | --- | --- |
