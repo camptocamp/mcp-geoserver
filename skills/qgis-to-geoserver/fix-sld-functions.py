@@ -1,19 +1,28 @@
 #!/usr/bin/env python3
-"""Rewrite QGIS expression function names in an exported SLD to their GeoTools names.
+"""Fix QGIS-exported SLD for GeoServer: function names and missing fonts.
 
-QGIS exports a label/filter expression as an <ogc:Function name="..."> tree using the
-QGIS function name, which GeoServer often cannot resolve. A single unknown function
-makes GeoServer reject the whole style ("Unable to find function X", HTTP 500).
+QGIS exports a label or filter expression using its own function names, which
+GeoServer often cannot resolve; one unknown function makes GeoServer reject the
+whole style ("Unable to find function X", HTTP 500). It also writes the author's
+font name (often a fontconfig alias such as "Sans") which the GeoServer JVM may
+not have, so the layer fails to render with "Unknown font".
 
-This rewrites the safe 1:1 renames and refuses (exit 2) on functions whose GeoTools
-equivalent differs in argument order or arity, because a blind rename there produces a
-style that parses but renders wrong. Those must be fixed in the QGIS expression and
-re-exported.
+This rewrites the safe 1:1 function renames, refuses on functions whose GeoTools
+form differs in arguments or arity (fix those in QGIS), flags external-graphic
+hrefs that are not a bare filename, and optionally rewrites fonts the server does
+not have to a chosen fallback.
 
 Usage:
-    python3 -I fix-sld-functions.py FILE.sld [FILE2.sld ...]   # rewrite in place
+    python3 -I fix-sld-functions.py FILE.sld [...]              # rewrite functions in place
     python3 -I fix-sld-functions.py --check DIR                 # report only, no write
+    python3 -I fix-sld-functions.py --available "DejaVu Sans,SansSerif" \\
+            --font-fallback SansSerif FILE.sld [...]            # also rewrite missing fonts
+
+Get the server's font list for --available from: GET /rest/fonts.json. SansSerif,
+Serif and Monospaced are Java logical fonts, always present on any GeoServer JVM.
 """
+import argparse
+import os
 import re
 import sys
 
@@ -41,9 +50,9 @@ UNSAFE = {
 }
 
 FUNC = re.compile(r'(<ogc:Function\s+name=")([^"]+)(")')
-# External graphic href pointing at a local QGIS path: GeoServer rejects the URI or draws a
-# square. Only a bare filename (resolved from the style's workspace) is safe.
 HREF = re.compile(r'xlink:href="([^"]+)"')
+FONT_FAMILY = re.compile(r'(name="font-family">)([^<]+)(</)')
+TTF = re.compile(r'(ttf://)([^#"\s]+)')
 
 
 def scan_svg(text):
@@ -57,7 +66,14 @@ def scan_svg(text):
     return sorted(set(bad))
 
 
-def process(text):
+def fonts_used(text):
+    out = set()
+    out.update(m.group(2).strip() for m in FONT_FAMILY.finditer(text))
+    out.update(m.group(2).strip() for m in TTF.finditer(text))
+    return sorted(out)
+
+
+def rename_functions(text):
     renamed, blocked = [], []
 
     def sub(m):
@@ -72,42 +88,85 @@ def process(text):
     return FUNC.sub(sub, text), renamed, blocked
 
 
+def apply_font_fallback(text, available, fallback):
+    changed = []
+
+    def ff(m):
+        fam = m.group(2).strip()
+        if fam not in available:
+            changed.append(fam)
+            return m.group(1) + fallback + m.group(3)
+        return m.group(0)
+
+    def tf(m):
+        fam = m.group(2).strip()
+        if fam not in available:
+            changed.append(fam)
+            return m.group(1) + fallback
+        return m.group(0)
+
+    return TTF.sub(tf, FONT_FAMILY.sub(ff, text)), sorted(set(changed))
+
+
 def main(argv):
-    check = argv and argv[0] == "--check"
-    paths = argv[1:] if check else argv
-    if not paths:
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument("--check", action="store_true", help="report only, do not write")
+    ap.add_argument("--available", default=None, help="comma-separated fonts GeoServer has (from /rest/fonts.json)")
+    ap.add_argument("--font-fallback", default=None, help="rewrite fonts not in --available to this font")
+    ap.add_argument("paths", nargs="*")
+    args = ap.parse_args(argv)
+    if not args.paths:
         print(__doc__)
         return 1
-    import os
+    available = {s.strip() for s in args.available.split(",")} if args.available else None
+
     files = []
-    for p in paths:
+    for p in args.paths:
         if os.path.isdir(p):
-            files += [os.path.join(p, f) for f in os.listdir(p) if f.endswith(".sld")]
+            files += [os.path.join(p, f) for f in sorted(os.listdir(p)) if f.endswith(".sld")]
         else:
             files.append(p)
-    unsafe_found = False
+
+    attention = False
     for f in files:
         with open(f, encoding="utf-8") as fh:
             text = fh.read()
-        new, renamed, blocked = process(text)
+        base = os.path.basename(f)
+        new, renamed, blocked = rename_functions(text)
         svg = scan_svg(text)
-        if blocked:
-            unsafe_found = True
-            for name in sorted(set(blocked)):
-                print(f"{os.path.basename(f)}: UNSAFE {name}: {UNSAFE[name]}")
-        if svg:
-            unsafe_found = True
-            for href in svg:
-                print(f"{os.path.basename(f)}: SVG {href}: not a bare filename; upload the SVG to the style's workspace and rewrite href to the bare name (see SKILL.md step 4)")
-        if renamed and not check:
+        font_changes = []
+        if args.font_fallback and available is not None:
+            new, font_changes = apply_font_fallback(new, available, args.font_fallback)
+
+        flagged = False
+        for name in sorted(set(blocked)):
+            flagged = True
+            print(f"{base}: UNSAFE {name}: {UNSAFE[name]}")
+        for href in svg:
+            flagged = True
+            print(f"{base}: SVG {href}: not a bare filename; upload the SVG and rewrite href to the bare name (SKILL.md step 4)")
+        if available is not None and not args.font_fallback:
+            for fam in fonts_used(text):
+                if fam not in available:
+                    flagged = True
+                    print(f"{base}: FONT {fam}: not installed on GeoServer; install it or pass --font-fallback")
+        attention = attention or flagged
+
+        wrote = (renamed or font_changes) and not args.check
+        if wrote:
             with open(f, "w", encoding="utf-8") as fh:
                 fh.write(new)
-        tag = "would rename" if check else "renamed"
+        verb = "would change" if args.check else "changed"
+        bits = []
         if renamed:
-            print(f"{os.path.basename(f)}: {tag} {', '.join(sorted(set(renamed)))}")
-        if not renamed and not blocked and not svg:
-            print(f"{os.path.basename(f)}: ok")
-    return 2 if unsafe_found else 0
+            bits.append("functions " + ", ".join(sorted(set(renamed))))
+        if font_changes:
+            bits.append("fonts " + ", ".join(font_changes) + " -> " + args.font_fallback)
+        if bits:
+            print(f"{base}: {verb} {'; '.join(bits)}")
+        elif not flagged:
+            print(f"{base}: ok")
+    return 2 if attention else 0
 
 
 if __name__ == "__main__":

@@ -31,12 +31,13 @@ Any output: stop. Show the user, in bold, `WARNING: this project contains creden
 
 ## 2. Export every style with one `execute_code` call
 
-File basename = GeoServer layer name. Fill `NAMES` with `{qgis layer name: geoserver layer name}` from `gs_list_layers`; leave it empty to export every vector layer under its QGIS name.
+File basename = GeoServer layer name. Fill `NAMES` with `{qgis layer name: geoserver layer name}` from `gs_list_layers`; leave it empty to export every vector layer under its QGIS name. Set `VERBOSE = True` to keep the SLDs in `./sld` instead of `/tmp/sld`.
 
 ```python
 import os
 from qgis.core import Qgis, QgsProject, QgsMapLayer, QgsSldExportContext
-OUT = "/tmp/sld"
+VERBOSE = False  # True: keep the exported SLDs in ./sld for inspection
+OUT = "sld" if VERBOSE else "/tmp/sld"
 NAMES = {}
 os.makedirs(OUT, exist_ok=True)
 layers = QgsProject.instance().mapLayers().values()
@@ -57,6 +58,8 @@ for qname, gname in todo.items():
 ```
 
 Report every non-`ok` line to the user: those are parts QGIS could not export or changed. Data-defined properties and shapeburst fills are dropped without a message; name them if the user asks what was lost.
+
+Raster layers: the loop above is vector only. For a raster (singleband pseudocolor, paletted), export with `layer.saveSldStyle(path)`, which writes **SLD 1.0**. Do not use `exportSldStyleV3`: its SLD 1.1 `ColorMap` uses the old `ColorMapEntry` list, and GeoServer rejects it with `Parsing failed for ColorMap: Categorize or Interpolate not specified`. Publish the raster as a GeoTIFF coverage store (REST: create the store with JSON `{"coverageStore":{"type":"GeoTIFF","url":"file:/path.tif"}}`, then POST a coverage), set the style, and render-compare as in step 6. Verified: SLD 1.0 uploads 201 and the singleband gradient matches QGIS.
 
 ## 3. Upload with the script
 
@@ -87,6 +90,7 @@ Locate the element named in the error line with `grep -n` on that one file, neve
 - `Unable to find function X`: QGIS exports an expression with its own function name, which GeoServer cannot resolve, and one unknown function makes it reject the whole style (HTTP 500). Run `python3 -I fix-sld-functions.py /tmp/sld/*.sld` first: it renames the safe 1:1 cases (`upper`->`strToUpperCase`, `lower`->`strToLowerCase`, `trim`->`strTrim`, `length`->`strLength`, `concat`->`Concatenate`, `title`->`strCapitalize`) and exits 2 naming the functions whose GeoTools form differs in args or arity (`substr`, `replace`, `coalesce`, `round`, `strpos`, `left`, `right`, `to_string`, `format_number`); fix those in the QGIS expression and re-export rather than hand-editing SLD. `array_to_string` on an array column is the separate case below.
 - A label on an array column (Postgres `text[]`): GeoServer renders a single-element array as text but a multi-element one as `[Ljava.lang.String@...]`, and wrapping it in any string function (`strToLowerCase`, ...) makes every feature junk. No error is raised and step 5 passes, so it is only visible in the image. This GeoServer has no `array_to_string`, `item()` or `col[1]` in SLD or CQL. Join the array into a scalar first, then label that column: publish a SQL view with `array_to_string(col, ', ') AS label`, or add a generated column `label text GENERATED ALWAYS AS (join_fn(col)) STORED` where `join_fn` is an IMMUTABLE wrapper over `array_to_string` (the stock function is only STABLE, which a generated column rejects). Only needed where `max(cardinality(col)) > 1`; a column that is always single-element renders fine as a bare `PropertyName`.
 - A `PropertyName` that is not a column of the GeoServer layer (QGIS join field, virtual field): GeoServer stores the style but every GetMap fails; `gs_check_layer` reports it in step 5. Either drop the rule in QGIS or publish a SQL view that carries the field, then restyle.
+- `Rendering process failed ... Unknown font X`: the style parses but the GetMap fails because the font (a `font-family` or a `ttf://` marker, often the fontconfig alias `Sans`) is not installed in GeoServer's JVM. Fetch the server's fonts (`curl $GS_URL/rest/fonts.json`) and reconcile: `python3 -I fix-sld-functions.py --available "<comma list from /rest/fonts>" /tmp/sld/*.sld` reports the missing ones. Then either install the real font (vanilla: data dir; Cloud 3.0.2: mount at `/opt/additional_fonts`), ask the user which installed font to use, or fall back with `--font-fallback SansSerif` (a Java logical font, always present; not `Arial`, which Linux containers lack).
 
 ## 5. Check each layer with text, one layer per call
 
