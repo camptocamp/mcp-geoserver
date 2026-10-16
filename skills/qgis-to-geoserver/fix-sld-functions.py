@@ -139,7 +139,8 @@ def rename_functions(text):
     return FUNC.sub(sub, text), renamed, blocked
 
 
-def apply_font_fallback(text, available, fallback):
+def apply_font_fallback(text, available, fallback, ttf_fallback=None):
+    ttf_fallback = ttf_fallback or fallback
     changed = []
 
     def ff(m):
@@ -153,10 +154,69 @@ def apply_font_fallback(text, available, fallback):
         fam = m.group(2).strip()
         if fam not in available:
             changed.append(fam)
-            return m.group(1) + fallback
+            return m.group(1) + ttf_fallback  # a ttf:// mark needs a real TTF, not a logical font
         return m.group(0)
 
     return TTF.sub(tf, FONT_FAMILY.sub(ff, text)), sorted(set(changed))
+
+
+# Logical fonts always exist on the JVM but have no TTF file, so a ttf:// font mark
+# rendered with one draws nothing; a ttf:// mark needs a real installed font.
+LOGICAL_FONTS = {"SansSerif", "Serif", "Monospaced", "Dialog", "DialogInput"}
+
+
+def pick_ttf_fallback(available, fallback):
+    if fallback not in LOGICAL_FONTS:
+        return fallback
+    for pref in ("DejaVu Sans", "Liberation Sans", "Noto Sans", "Arial"):
+        if pref in available:
+            return pref
+    real = [f for f in sorted(available) if f not in LOGICAL_FONTS and "." not in f]
+    return real[0] if real else fallback
+
+
+# QGIS "around point" label placement auto-offsets labels off the marker; SLD export
+# centres them (AnchorPoint 0.5/0.5, zero displacement) so the label sits on the dot.
+# Only touch styles that draw point markers, so polygon/line labels stay centred.
+POINTSYM = re.compile(r'<(?:\w+:)?PointSymbolizer>')
+LABEL_PLACEMENT_END = re.compile(r'</(?:\w+:)?LabelPlacement>')
+ANCHOR_BLOCK = re.compile(r'<(?:\w+:)?AnchorPoint>.*?</(?:\w+:)?AnchorPoint>', re.S)
+DISPL_BLOCK = re.compile(r'<(?:\w+:)?Displacement>.*?</(?:\w+:)?Displacement>', re.S)
+POINTPLACE_OPEN = re.compile(r'<(?:\w+:)?PointPlacement>')
+
+
+def offset_point_labels(text):
+    if not POINTSYM.search(text):
+        return text, False
+    moved = [False]
+
+    def repl(m):
+        block = m.group(0)
+        if LINEPLACEMENT.search(block):
+            return block
+        p = m.group(1) or ""
+        fs = FONT_SIZE.search(block)
+        dx = max(8, round(float(fs.group(1)) / 2) + 2) if fs else 8
+        anchor = f"<{p}AnchorPoint><{p}AnchorPointX>0</{p}AnchorPointX><{p}AnchorPointY>0.5</{p}AnchorPointY></{p}AnchorPoint>"
+        displ = f"<{p}Displacement><{p}DisplacementX>{dx}</{p}DisplacementX><{p}DisplacementY>0</{p}DisplacementY></{p}Displacement>"
+        orig = block
+        if POINTPLACE_OPEN.search(block):
+            if ANCHOR_BLOCK.search(block):
+                block = ANCHOR_BLOCK.sub(anchor, block, count=1)
+            else:
+                block = POINTPLACE_OPEN.sub(lambda mm: mm.group(0) + anchor, block, count=1)
+            if DISPL_BLOCK.search(block):
+                block = DISPL_BLOCK.sub(displ, block, count=1)
+            else:
+                block = re.sub(r'(</(?:\w+:)?AnchorPoint>)', r"\1" + displ, block, count=1)
+        else:
+            placement = f"<{p}LabelPlacement><{p}PointPlacement>{anchor}{displ}</{p}PointPlacement></{p}LabelPlacement>"
+            block = re.sub(r'(</(?:\w+:)?Label>)', r"\1" + placement, block, count=1)
+        if block != orig:
+            moved[0] = True
+        return block
+
+    return TEXTSYM.sub(repl, text), moved[0]
 
 
 def main(argv):
@@ -185,10 +245,12 @@ def main(argv):
         base = os.path.basename(f)
         new, renamed, blocked = rename_functions(text)
         new, line_tuned = tune_line_labels(new)
+        new, labels_offset = offset_point_labels(new)
         svg = scan_svg(text)
         font_changes = []
         if args.font_fallback and available is not None:
-            new, font_changes = apply_font_fallback(new, available, args.font_fallback)
+            ttf_fallback = pick_ttf_fallback(available, args.font_fallback)
+            new, font_changes = apply_font_fallback(new, available, args.font_fallback, ttf_fallback)
 
         flagged = False
         for name in sorted(set(blocked)):
@@ -204,7 +266,7 @@ def main(argv):
                     print(f"{base}: FONT {fam}: not installed on GeoServer; install it or pass --font-fallback")
         attention = attention or flagged
 
-        wrote = (renamed or font_changes or line_tuned) and not args.check
+        wrote = (renamed or font_changes or line_tuned or labels_offset) and not args.check
         if wrote:
             with open(f, "w", encoding="utf-8") as fh:
                 fh.write(new)
@@ -216,6 +278,8 @@ def main(argv):
             bits.append("fonts " + ", ".join(font_changes) + " -> " + args.font_fallback)
         if line_tuned:
             bits.append("line labels (maxAngleDelta, offset, repeat, group)")
+        if labels_offset:
+            bits.append("point labels offset off the marker")
         if bits:
             print(f"{base}: {verb} {'; '.join(bits)}")
         elif not flagged:
