@@ -31,6 +31,22 @@ Nobody wins outright:
 - **Bridge** gets the hatch right (`shape://slash`, which native and ours have to patch), and it collects SVG/icon resources and uploads them, which is real value for icon-heavy styles.
 - **All three** drop data-defined/expression size and gradient fill: those are QGIS-export limits, not converter-specific.
 
+## Rendered differences
+
+The two cases where the converters visibly diverge on GeoServer (same layer, same data).
+
+Hatch fill: QGIS native exports `horline` (blank); Bridge exports `shape://slash` (renders).
+
+| QGIS native | GeoCat Bridge |
+| --- | --- |
+| ![hatch native](img/hatch_native_gs.png) | ![hatch bridge](img/hatch_bridge_gs.png) |
+
+SVG marker: QGIS native leaves a local href (square); Bridge uploads the icon and references it (shape resolves).
+
+| QGIS native | GeoCat Bridge |
+| --- | --- |
+| ![svg native](img/svg_native_gs.png) | ![svg bridge](img/svg_bridge_gs.png) |
+
 ## Effort
 
 | | Install | Integrate in the skill |
