@@ -31,25 +31,35 @@ Nobody wins outright:
 - **Bridge** gets the hatch right (`shape://slash`, which native and ours have to patch), and it collects SVG/icon resources and uploads them, which is real value for icon-heavy styles.
 - **All three** drop data-defined/expression size and gradient fill: those are QGIS-export limits, not converter-specific.
 
-## Where they agree (most of the time)
+## Rendered comparison (all three converters)
 
-For most techniques the three converters produce an equivalent, working style and render the same: verified identical output for raster singleband pseudocolor (both SLD 1.0, same 7 `ColorMapEntry`), and equal parse results for categorized, graduated, lines, polygons and plain labels. They diverge on only four things: function names, fonts, hatch, and SVG. So a three-way comparison is only meaningful for those; everything else is shown as the QGIS-vs-GeoServer pair in `qgis-vs-geoserver-styling.md`, which already stands in for all three converters.
+Each row is the same layer and data rendered by GeoServer from each converter's SLD. `ours` uses Bridge's converter (Bridge is installed here) plus `fix-sld-functions.py`.
 
-## Rendered differences
+Categorized renderer (all three agree):
 
-The cases where the converters visibly diverge on GeoServer (same layer, same data).
+| QGIS native | Ours | GeoCat Bridge |
+| --- | --- | --- |
+| ![cat native](img/cat_native_gs.png) | ![cat ours](img/cat_ours_gs.png) | ![cat bridge](img/cat_bridge_gs.png) |
 
-Hatch fill: QGIS native exports `horline` (blank); Bridge exports `shape://slash` (renders).
+Raster singleband pseudocolor (all three agree, SLD 1.0):
 
-| QGIS native | GeoCat Bridge |
-| --- | --- |
-| ![hatch native](img/hatch_native_gs.png) | ![hatch bridge](img/hatch_bridge_gs.png) |
+| QGIS native | Ours | GeoCat Bridge |
+| --- | --- | --- |
+| ![raster native](img/raster_native_gs.png) | ![raster ours](img/raster_ours_gs.png) | ![raster bridge](img/raster_bridge_gs.png) |
 
-SVG marker: QGIS native leaves a local href (square); Bridge uploads the icon and references it (shape resolves).
+Hatch fill (native blank; ours and Bridge render `shape://slash`):
 
-| QGIS native | GeoCat Bridge |
-| --- | --- |
-| ![svg native](img/svg_native_gs.png) | ![svg bridge](img/svg_bridge_gs.png) |
+| QGIS native | Ours | GeoCat Bridge |
+| --- | --- | --- |
+| ![hatch native](img/hatch_native_gs.png) | ![hatch ours](img/hatch_ours_gs.png) | ![hatch bridge](img/hatch_bridge_gs.png) |
+
+SVG marker (native square; ours and Bridge resolve the icon):
+
+| QGIS native | Ours | GeoCat Bridge |
+| --- | --- | --- |
+| ![svg native](img/svg_native_gs.png) | ![svg ours](img/svg_ours_gs.png) | ![svg bridge](img/svg_bridge_gs.png) |
+
+Function label `upper()` is not shown as images: native (`upper`) and Bridge (`strToUpper`) both produce a style GeoServer rejects (HTTP 500, nothing renders), while ours renames to `strToUpperCase` and renders. Same for fonts. These are the cases where ours beats both others; see the scorecard above.
 
 ## Effort
 
