@@ -10,6 +10,7 @@ The symbology path mostly holds; the breakage is in labels, expressions, data-de
 | --- | --- | --- | --- | --- |
 | Single symbol, categorized renderer | 201 | matches (minor marker-size and label-offset diffs) | works | - |
 | Rule-based renderer with filters | 201 | matches | works | - |
+| Graduated renderer (real data: wind flow, 7 classes) | 201 | matches, same color ramp | works | - |
 | Polygon fill and outline + label | 201 | matches | works | - |
 | Simple field label | 201 | matches | works | - |
 | Data-defined rotation | 201 | matches (orientations vary) | works | - |
@@ -58,6 +59,12 @@ Curved label along a line: the text follows the line on both; GeoServer centres 
 | QGIS | GeoServer |
 | --- | --- |
 | ![lines in QGIS](img/qgis_lines.png) | ![lines in GeoServer](img/gs_lines.png) |
+
+Graduated renderer on real data (wind-flow streamlines, 7 speed classes): the classification and color ramp reproduce faithfully.
+
+| QGIS | GeoServer |
+| --- | --- |
+| ![flow in QGIS](img/qgis_flow.png) | ![flow in GeoServer](img/gs_flow.png) |
 
 ## Complex examples
 
