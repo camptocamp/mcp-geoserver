@@ -15,7 +15,7 @@ GS_AUTH  ?= admin:geoserver
 
 .DEFAULT_GOAL := help
 .PHONY: help start run stop restart recreate remove logs wait status shell web \
-        build test it clean
+        build test it clean scenarios
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -71,6 +71,9 @@ test: ## Maven unit tests
 
 it: ## Maven integration tests (mcp-it, needs Docker)
 	./mvnw -q clean verify -Pit
+
+scenarios: start ## Three model-driven MCP scenarios (MODEL=, BUDGET= per scenario in USD; needs make build once)
+	./scripts/scenarios.sh
 
 clean: ## Maven clean
 	./mvnw -q clean
