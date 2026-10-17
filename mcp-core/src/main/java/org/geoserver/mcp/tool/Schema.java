@@ -63,8 +63,7 @@ public final class Schema {
         Map<String, Object> s = new LinkedHashMap<>();
         s.put("type", "object");
         s.put("properties", new LinkedHashMap<>(properties));
-        s.put("required", List.copyOf(required));
-        s.put("additionalProperties", false);
+        if (!required.isEmpty()) s.put("required", List.copyOf(required));
         return s;
     }
 }

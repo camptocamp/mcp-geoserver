@@ -1,6 +1,7 @@
 package org.geoserver.mcp.tool;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,12 @@ class SchemaTest {
         Map<String, Object> props = (Map<String, Object>) s.get("properties");
         assertEquals(Map.of("type", "string", "description", "Layer name"), props.get("name"));
         assertEquals("array", ((Map<?, ?>) props.get("layers")).get("type"));
-        assertEquals(Boolean.FALSE, s.get("additionalProperties"));
+        assertFalse(s.containsKey("additionalProperties"));
+    }
+
+    @Test
+    void omitsRequiredWhenNothingIsRequired() {
+        Map<String, Object> s = Schema.object().bool("flag", "A flag", false).build();
+        assertFalse(s.containsKey("required"));
     }
 }
