@@ -65,7 +65,7 @@ public class StyleTools {
     GsTool list() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_list_styles", Schema.object().string(Keys.WORKSPACE, "Restrict to this workspace; omit for global styles and all workspaces", false).build())
+                return McpSchema.Tool.builder("gs_list_styles", Schema.object().string(Keys.WORKSPACE, "Omit for all, including global styles", false).build())
                         .description("List styles").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -94,7 +94,7 @@ public class StyleTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_get_style", Schema.object()
-                        .string("name", "Style name", true)
+                        .string("name", null, true)
                         .string(Keys.WORKSPACE, "Workspace of the style; omit for global", false).build())
                         .description("Get a style's metadata and its body (SLD, or CSS/YSLD/MBStyle per its format)").build();
             }
@@ -114,9 +114,9 @@ public class StyleTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_put_style", Schema.object()
-                        .string("name", "Style name", true)
+                        .string("name", null, true)
                         .string(Keys.WORKSPACE, "Workspace; omit for a global style", false)
-                        .string("body", "Full style document in the given format", true)
+                        .string("body", null, true)
                         .string(Keys.FORMAT, "sld (default), or css, ysld, mbstyle when that extension is installed", false).build())
                         .description("Create or replace a style. The body is parsed before anything is written.").build();
             }
@@ -155,8 +155,7 @@ public class StyleTools {
                         .string(Keys.WORKSPACE, "Workspace of the style; relative graphics resolve in its styles directory", false)
                         .string(Keys.LAYER, Keys.DESC_LAYER_NAME + "; when given, attributes the style references are checked against it", false)
                         .string(Keys.FORMAT, "sld (default), css, ysld, mbstyle; ignored with name", false).build())
-                        .description("Parse a style without writing anything and report findings: parse error, version, unknown functions, "
-                                + "ExternalGraphic hrefs that do not resolve, attributes missing from the layer. Nothing is stored.").build();
+                        .description("Parse a style without storing it: parse error, version, unknown functions, unresolved ExternalGraphic hrefs, attributes missing from the layer").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 Source src = source(ctx, args);

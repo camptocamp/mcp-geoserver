@@ -52,10 +52,10 @@ public class StyleGeneratorTools {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_generate_style", Schema.object()
                         .string(Keys.LAYER, Keys.DESC_LAYER_NAME + "; its data drives the classes", true)
-                        .string(ATTRIBUTE, "Attribute to style on", true)
+                        .string(ATTRIBUTE, null, true)
                         .enumeration("method", "categorized: one rule per distinct value (up to " + MAX_CATEGORIES + "); equalInterval, quantile, jenks: numeric classes", true,
                                 CATEGORIZED, "equalInterval", "quantile", "jenks")
-                        .integer("classes", "Number of classes for numeric methods, default 5", false)
+                        .integer("classes", "Numeric methods, default 5", false)
                         .enumeration("ramp", "Colors; default categorical for categorized, blues otherwise", false,
                                 new TreeSet<>(ColorRamps.RAMPS.keySet()).toArray(String[]::new))
                         .string("name", "Style name, default <layer>_<attribute>_<method>", false)

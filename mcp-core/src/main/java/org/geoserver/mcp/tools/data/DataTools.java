@@ -149,12 +149,12 @@ public class DataTools {
                 return McpSchema.Tool.builder("gs_get_map", Schema.object()
                         .stringArray(Keys.LAYERS, "Layer or layer group names", true)
                         .numberArray("bbox", "minx, miny, maxx, maxy", true)
-                        .integer(WIDTH, "Image width in pixels", true)
-                        .integer(HEIGHT, "Image height in pixels", true)
+                        .integer(WIDTH, "Pixels", true)
+                        .integer(HEIGHT, "Pixels", true)
                         .string("srs", "CRS of the bbox, default EPSG:4326", false)
                         .stringArray(Keys.STYLES, "Style per layer; empty string for default", false)
                         .string(Keys.FORMAT, "Image MIME type, default image/png", false)
-                        .bool("transparent", "Transparent background", false).build())
+                        .bool("transparent", null, false).build())
                         .description("Render a WMS GetMap and return the image so you can look at it").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -186,10 +186,9 @@ public class DataTools {
                 return McpSchema.Tool.builder("gs_check_layer", Schema.object()
                         .string("name", Keys.DESC_LAYER_NAME, true)
                         .numberArray("bbox", "minx, miny, maxx, maxy in EPSG:4326; default the layer's lat/lon bounds", false)
-                        .integer(WIDTH, "Image width in pixels, default 256", false)
-                        .integer(HEIGHT, "Image height in pixels, default 256", false).build())
-                        .description("Render one layer with WMS GetMap and report text only: status, content type, ServiceException text, "
-                                + "ratio of painted pixels, elapsed ms. Use this instead of gs_get_map to check that a layer and its style render.").build();
+                        .integer(WIDTH, "Pixels, default 256", false)
+                        .integer(HEIGHT, "Pixels, default 256", false).build())
+                        .description("Text-only GetMap check of one layer: status, content type, ServiceException, painted pixel ratio, elapsed ms. Prefer over gs_get_map to verify rendering").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 LayerInfo layer = Lookups.layer(catalog, args.string("name"));

@@ -46,10 +46,8 @@ public class DiscoveryTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_list_store_types", Schema.object()
-                        .enumeration("kind", "Restrict to vector or raster", false, Keys.VECTOR, Keys.RASTER).build())
-                        .description("Store types available on this server, discovered at runtime from GeoTools plugins. "
-                                + "Vector types list their connection parameters. Raster types take a single 'url'. "
-                                + "Use a returned name as the 'type' argument of gs_create_store.").build();
+                        .enumeration("kind", null, false, Keys.VECTOR, Keys.RASTER).build())
+                        .description("Store types usable as gs_create_store type; vector ones list their connection parameters, raster ones take url").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String kind = args.string("kind", null);

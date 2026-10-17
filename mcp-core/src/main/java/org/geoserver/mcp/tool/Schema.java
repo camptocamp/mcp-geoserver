@@ -46,11 +46,16 @@ public final class Schema {
     }
 
     private static Map<String, Object> prop(String type, String description) {
-        return Map.of("type", type, Keys.DESCRIPTION, description);
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("type", type);
+        if (description != null) p.put(Keys.DESCRIPTION, description);
+        return p;
     }
 
     private static Map<String, Object> prop(String type, String description, String key, Object value) {
-        return Map.of("type", type, Keys.DESCRIPTION, description, key, value);
+        Map<String, Object> p = prop(type, description);
+        p.put(key, value);
+        return p;
     }
 
     private Schema add(String name, Map<String, Object> def, boolean req) {

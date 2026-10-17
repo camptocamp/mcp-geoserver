@@ -25,6 +25,15 @@ class SchemaTest {
     }
 
     @Test
+    void omitsDescriptionWhenNull() {
+        Map<String, Object> s = Schema.object().string("name", null, true).enumeration("kind", null, false, "a", "b").build();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> props = (Map<String, Object>) s.get("properties");
+        assertEquals(Map.of("type", "string"), props.get("name"));
+        assertEquals(Map.of("type", "string", "enum", List.of("a", "b")), props.get("kind"));
+    }
+
+    @Test
     void omitsRequiredWhenNothingIsRequired() {
         Map<String, Object> s = Schema.object().bool("flag", "A flag", false).build();
         assertFalse(s.containsKey("required"));

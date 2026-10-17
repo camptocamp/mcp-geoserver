@@ -69,9 +69,9 @@ public class AdminTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_delete", Schema.object()
-                        .enumeration("kind", "What to delete", true, Keys.WORKSPACE, Keys.STORE, Keys.LAYER, Keys.STYLE, "layergroup")
+                        .enumeration("kind", null, true, Keys.WORKSPACE, Keys.STORE, Keys.LAYER, Keys.STYLE, "layergroup")
                         .string(Keys.WORKSPACE, "Store: required; style, layergroup: optional; layer: unused, qualify name instead", false)
-                        .string("name", "Object name", true)
+                        .string("name", null, true)
                         .bool(RECURSE, "Also delete everything that depends on it", false).build())
                         .description("Delete a catalog object. Without recurse, refuses if other objects still reference it.").build();
             }
