@@ -156,7 +156,7 @@ They run the matching tool with the caller's credentials, so permissions and lim
 
 ## Example sessions
 
-Three real runs against the demo data of a local GeoServer (Claude Haiku). Answers are trimmed.
+Four real runs against the demo data of a local GeoServer (Claude Haiku). Answers are trimmed.
 
 ### 1. What is on this GeoServer?
 
@@ -184,6 +184,18 @@ Tools: `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_stor
 Tools: `gs_get_layer`, `gs_query_features` (twice).
 
 > Only one Pacific state is above 5 million: California, 29,760,021 (`PERSONS`). Washington (4,866,692) and Oregon (2,842,321) are below the threshold.
+
+### 4. Show the REST calls (verbose)
+
+> List the layers in the topp workspace, and show me the equivalent curl commands (verbose).
+
+Tools: `gs_list_layers` with `verbose: true`.
+
+> The `topp` workspace has five layers: `topp:states`, `topp:tasmania_cities`, `topp:tasmania_roads`, `topp:tasmania_state_boundaries`, `topp:tasmania_water_bodies`.
+>
+> ```bash
+> curl -u "$GS_AUTH" -X GET 'http://localhost:8080/geoserver/rest/workspaces/topp/layers.json'
+> ```
 
 ## Security notes
 
