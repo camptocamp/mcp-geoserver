@@ -6,7 +6,7 @@ CI runs `.github/workflows/security.yml` on every PR and on push to master, with
 - `snyk` (`snyk/actions/maven-3-jdk-17`): `test --maven-aggregate-project --severity-threshold=high`. Gated on the `SNYK_TOKEN` secret (`if: env.SNYK_TOKEN != ''`), so it no-ops on Dependabot and fork PRs.
 - `osv` (`google/osv-scanner-action`): builds a CycloneDX SBOM (`cyclonedx:makeAggregateBom`, provided and test scope excluded in pom.xml) and scans it against the OSV database (osv.dev). Needs no token and no CVE download, so it runs and gates even on Dependabot and fork PRs. Fails when any known vulnerability is found. Scope is the bundled/app deps only; the GeoServer/GeoTools/Spring stack is `provided` and shipped by the host, so it is deliberately out of scope here.
 
-The SonarQube quality gate (`.github/workflows/sonarqube.yml`) also gates new code; see "Quality gate (SonarQube)" above. The release workflow (`.github/workflows/release.yml`) runs `snyk monitor` to post the dependency snapshot to Snyk, again gated on `SNYK_TOKEN`.
+The SonarQube quality gate (`.github/workflows/sonarqube.yml`) also gates new code; see "Quality gate (SonarQube)" in `AGENTS.md`. The release workflow (`.github/workflows/release.yml`) runs `snyk monitor` to post the dependency snapshot to Snyk, again gated on `SNYK_TOKEN`.
 
 Secrets (`gh secret list -R camptocamp/mcp-geoserver` shows which are set):
 
