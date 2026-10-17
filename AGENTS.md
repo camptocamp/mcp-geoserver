@@ -6,7 +6,7 @@ Instructions for AI agents and humans working in this repository.
 
 ## What this is
 
-A GeoServer extension exposing an MCP server at `/mcp`. Before changing architecture, read the design spec `docs/superpowers/specs/2026-09-25-geoserver-mcp-design.md`; it is kept local and is not in the repository. Both "Amendments" sections win over earlier sections.
+A GeoServer extension exposing an MCP server at `/mcp`.
 
 ## Layout
 
@@ -83,6 +83,11 @@ Live assessment (hands-on test of a running server) house rules:
 ## Tool catalogue
 
 Every tool also accepts `verbose: boolean` and declares MCP annotations (read-only, destructive, idempotent) from `ToolHints`.
+
+How tools reach GeoServer:
+
+- Over HTTP (`GeoServerHttpClient`, caller's `Authorization` forwarded): `gs_get_map`, `gs_check_layer`, `gs_gwc_*`.
+- Everything else: in-process `Catalog` / `GeoServer` API, no HTTP call to GeoServer; the `curl` trace is only the REST equivalent.
 
 Read
 - `gs_status()`: versions, proxy base URL, counts

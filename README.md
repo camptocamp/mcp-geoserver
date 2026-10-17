@@ -19,7 +19,7 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 - **Runs as the caller.** Every tool goes through GeoServer's own security with the caller's credentials and an allowed-roles gate. There is no shared admin account behind the chat.
 - **Equivalent commands.** In verbose mode each result ends with the exact `curl` calls that do the same thing over REST, so an administrator can check what the AI did or paste the commands into deployment scripts.
 - **Checks before writing.** JDBC stores must answer `select 1` before anything is saved, PostGIS stores report missing privileges, styles are parsed before they are stored, and `gs_validate_style` reports unknown functions, broken graphics and missing attributes without writing anything.
-- **QGIS to production.** The skill in `skills/qgis-to-geoserver` lets the agent carry a QGIS style to GeoServer, fix SLD validation errors and compare both renderings.
+- **QGIS to production.** The [styles-to-geoserver](https://github.com/camptocamp/styles-to-geoserver) skill lets the agent carry a QGIS style to GeoServer, fix SLD validation errors and compare both renderings.
 - **Built for GeoServer 3.** Jakarta and Spring 7, vanilla GeoServer 3.0.x, with a GeoServer Cloud module. Maintained by Camptocamp, a long-standing contributor to the GeoServer core.
 
 ## Status
@@ -168,24 +168,6 @@ Claude calls `gs_create_workspace`, `gs_create_store` (type GeoTIFF), `gs_publis
 - Use HTTP Basic over TLS in production.
 - The endpoint is off by default.
 - `internalBaseUrl` is called with the caller's credentials.
-
-## QGIS styles to GeoServer
-
-Style a layer in QGIS, then ask the agent to publish that style on GeoServer. The agent drives two MCP servers, this one and [qgis-mcp](https://github.com/nkarasiak/qgis-mcp); the GeoServer extension never talks to QGIS. The workflow lives in one skill file, `skills/qgis-to-geoserver/SKILL.md`. Install for Claude Code with `ln -s "$PWD/skills/qgis-to-geoserver" ~/.claude/skills/`.
-
-1. Export: QGIS's own SLD exporter, called through qgis-mcp `execute_code` (`exportSldStyleV3` on QGIS 3.44 and later, `saveSldStyle` before). Output is SLD 1.1.0.
-2. Push: `gs_put_style`. On a validation error the agent fixes the SLD and retries.
-3. Compare: the agent renders the same extent in QGIS at 90.7 DPI and with `gs_get_map`, then looks at both images.
-
-The comparison is mandatory because GeoServer accepts some broken styles without complaint. Known gaps:
-
-- SVG markers: QGIS writes QGIS-relative paths, and GeoServer draws default squares instead. The skill checks that QGIS can resolve the SVG, uploads it next to the style through the REST resource API, and sets the href to the bare file name (verified on 3.0.1, `?fill=` parameters included).
-- Data-defined properties and shapeburst fills can drop silently.
-- Symbol sizes shift with DPI (QGIS 96, GeoServer 90.7).
-
-Before opening a QGIS project, the agent scans it for stored credentials (`password=`, `authcfg=`, `service=`) and asks before loading it.
-
-The converter is a choice: QGIS native export, GeoCat Bridge, or ours (Bridge-if-installed plus `fix-sld-functions.py`, the default). For a render-verified, style-by-style comparison of all three against QGIS (with screenshots), see [docs/qgis-vs-geoserver-styling.md](docs/qgis-vs-geoserver-styling.md). Checked on QGIS 4.2.3, GeoServer 3.0.1, and GeoCat Bridge 4.6.1 (bridgestyle 0.1.8).
 
 ## Rasters on S3, Google Cloud Storage or HTTP
 
