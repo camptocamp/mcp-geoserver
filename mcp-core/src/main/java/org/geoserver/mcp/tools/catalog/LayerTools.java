@@ -104,27 +104,31 @@ public class LayerTools {
                 if (!(store instanceof CoverageStoreInfo)) {
                     throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
                 }
-                CatalogBuilder builder = new CatalogBuilder(catalog);
-                builder.setWorkspace(ws);
-                builder.setStore(store);
-                CoverageInfo ci = args.has(Keys.NATIVE_NAME) ? builder.buildCoverage(args.string(Keys.NATIVE_NAME)) : builder.buildCoverage();
-                ctx.trace().curl("POST", Keys.REST_WORKSPACES + ws.getName() + "/coveragestores/" + store.getName() + "/coverages",
-                        Keys.APPLICATION_JSON, "{\"coverage\":{\"name\":\"" + args.string("name", ci.getNativeName()) + "\",\"nativeName\":\"" + ci.getNativeName() + "\"}}");
-                if (args.has("name")) ci.setName(args.string("name"));
-                if (args.has(Keys.TITLE)) ci.setTitle(args.string(Keys.TITLE));
-                if (args.has("srs")) {
-                    ci.setSRS(args.string("srs"));
-                    ci.setProjectionPolicy(ProjectionPolicy.FORCE_DECLARED);
-                }
-                builder.setupBounds(ci);
-                LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + ci.getName());
-                if (existing != null) return Views.published(existing, false, List.of());
-                LayerInfo layer = builder.buildLayer(ci);
-                catalog.add(ci);
-                catalog.add(layer);
-                return Views.published(catalog.getLayerByName(ws.getName() + ":" + ci.getName()), true, List.of());
+                return publishCoverage(ctx, ws, store, args);
             }
         };
+    }
+
+    Object publishCoverage(ToolContext ctx, WorkspaceInfo ws, StoreInfo store, Args args) throws Exception {
+        CatalogBuilder builder = new CatalogBuilder(catalog);
+        builder.setWorkspace(ws);
+        builder.setStore(store);
+        CoverageInfo ci = args.has(Keys.NATIVE_NAME) ? builder.buildCoverage(args.string(Keys.NATIVE_NAME)) : builder.buildCoverage();
+        ctx.trace().curl("POST", Keys.REST_WORKSPACES + ws.getName() + "/coveragestores/" + store.getName() + "/coverages",
+                Keys.APPLICATION_JSON, "{\"coverage\":{\"name\":\"" + args.string("name", ci.getNativeName()) + "\",\"nativeName\":\"" + ci.getNativeName() + "\"}}");
+        if (args.has("name")) ci.setName(args.string("name"));
+        if (args.has(Keys.TITLE)) ci.setTitle(args.string(Keys.TITLE));
+        if (args.has("srs")) {
+            ci.setSRS(args.string("srs"));
+            ci.setProjectionPolicy(ProjectionPolicy.FORCE_DECLARED);
+        }
+        builder.setupBounds(ci);
+        LayerInfo existing = catalog.getLayerByName(ws.getName() + ":" + ci.getName());
+        if (existing != null) return Views.published(existing, false, List.of());
+        LayerInfo layer = builder.buildLayer(ci);
+        catalog.add(ci);
+        catalog.add(layer);
+        return Views.published(catalog.getLayerByName(ws.getName() + ":" + ci.getName()), true, List.of());
     }
 
     static final int MAX_BULK = 50;
