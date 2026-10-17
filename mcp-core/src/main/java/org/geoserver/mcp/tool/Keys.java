@@ -7,6 +7,7 @@ public final class Keys {
     public static final String CREATED = "created";
     public static final String DEFAULT_STYLE = "defaultStyle";
     public static final String DESCRIPTION = "description";
+    public static final String DESC_LAYER_NAME = "Layer, workspace:name or plain name";
     public static final String DESC_WORKSPACE_NAME = "Workspace name";
     public static final String ENABLED = "enabled";
     public static final String FORMAT = "format";

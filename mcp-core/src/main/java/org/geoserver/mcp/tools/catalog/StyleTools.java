@@ -148,7 +148,7 @@ public class StyleTools {
                         .string("body", "Style document to check; omit when checking a stored style by name", false)
                         .string("name", "Stored style name to check instead of body", false)
                         .string(Keys.WORKSPACE, "Workspace of the style; relative graphics resolve in its styles directory", false)
-                        .string(Keys.LAYER, "Layer, workspace:name; when given, attributes the style references are checked against it", false)
+                        .string(Keys.LAYER, Keys.DESC_LAYER_NAME + "; when given, attributes the style references are checked against it", false)
                         .string(Keys.FORMAT, "sld (default), css, ysld, mbstyle; ignored with name", false).build())
                         .description("Parse a style without writing anything and report findings: parse error, version, unknown functions, "
                                 + "ExternalGraphic hrefs that do not resolve, attributes missing from the layer. Nothing is stored.").build();

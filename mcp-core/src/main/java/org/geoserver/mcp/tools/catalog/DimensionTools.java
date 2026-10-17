@@ -46,7 +46,7 @@ public class DimensionTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_set_time_dimension", Schema.object()
-                        .string("name", "Layer name, workspace:name", true)
+                        .string("name", Keys.DESC_LAYER_NAME, true)
                         .bool(Keys.ENABLED, "Enable the time dimension, default true; false removes it from WMS", false)
                         .string(ATTRIBUTE, "Vector layers: date or timestamp attribute holding the time; ignored for rasters (ImageMosaic time comes from the index)", false)
                         .string(END_ATTRIBUTE, "Vector layers: optional end time attribute, for features valid over a period", false)

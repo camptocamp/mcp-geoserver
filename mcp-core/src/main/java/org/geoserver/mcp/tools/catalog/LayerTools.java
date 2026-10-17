@@ -69,7 +69,7 @@ public class LayerTools {
     GsTool get() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_get_layer", Schema.object().string("name", "Layer name, workspace:name or plain name", true).build())
+                return McpSchema.Tool.builder("gs_get_layer", Schema.object().string("name", Keys.DESC_LAYER_NAME, true).build())
                         .description("Describe a layer: store, native name, SRS, bounds, styles, attributes").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -303,7 +303,7 @@ public class LayerTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_update_layer", Schema.object()
-                        .string("name", "Layer name, workspace:name", true)
+                        .string("name", Keys.DESC_LAYER_NAME, true)
                         .string(Keys.TITLE, "New title", false)
                         .string(Keys.ABSTRACT, "New abstract", false)
                         .string(Keys.DEFAULT_STYLE, "Style name, optionally workspace:name", false)

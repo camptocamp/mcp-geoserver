@@ -57,7 +57,7 @@ public class DataTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_query_features", Schema.object()
-                        .string(Keys.LAYER, "Vector layer, workspace:name", true)
+                        .string(Keys.LAYER, Keys.DESC_LAYER_NAME, true)
                         .string("cql", "ECQL filter, e.g. NAME = 'Blue Lake' or POPULATION > 1000", false)
                         .numberArray("bbox", "minx, miny, maxx, maxy in the layer's declared SRS", false)
                         .stringArray("properties", "Attributes to return; omit for all", false)
@@ -161,7 +161,7 @@ public class DataTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_check_layer", Schema.object()
-                        .string("name", "Layer name, workspace:name", true)
+                        .string("name", Keys.DESC_LAYER_NAME, true)
                         .numberArray("bbox", "minx, miny, maxx, maxy in EPSG:4326; default the layer's lat/lon bounds", false)
                         .integer(WIDTH, "Image width in pixels, default 256", false)
                         .integer(HEIGHT, "Image height in pixels, default 256", false).build())

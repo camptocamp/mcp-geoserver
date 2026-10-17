@@ -51,7 +51,7 @@ public class StyleGeneratorTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_generate_style", Schema.object()
-                        .string(Keys.LAYER, "Vector layer, workspace:name; its data drives the classes", true)
+                        .string(Keys.LAYER, Keys.DESC_LAYER_NAME + "; its data drives the classes", true)
                         .string(ATTRIBUTE, "Attribute to style on", true)
                         .enumeration("method", "categorized: one rule per distinct value (up to " + MAX_CATEGORIES + "); equalInterval, quantile, jenks: numeric classes", true,
                                 CATEGORIZED, "equalInterval", "quantile", "jenks")
