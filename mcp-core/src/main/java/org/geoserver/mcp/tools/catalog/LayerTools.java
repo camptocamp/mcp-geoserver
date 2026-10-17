@@ -12,6 +12,7 @@ import org.geoserver.catalog.WorkspaceInfo;
 import java.io.IOException;
 import org.geotools.api.feature.type.FeatureType;
 import org.geotools.api.feature.type.GeometryDescriptor;
+import org.geotools.api.feature.type.Name;
 import org.geotools.api.feature.type.PropertyDescriptor;
 import org.geotools.feature.NameImpl;
 import org.geotools.geometry.jts.Geometries;
@@ -20,6 +21,7 @@ import org.geotools.jdbc.VirtualTable;
 import org.geoserver.mcp.tool.ToolException;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.geoserver.catalog.Catalog;
@@ -86,7 +88,7 @@ public class LayerTools {
                 return McpSchema.Tool.builder("gs_publish_layer", Schema.object()
                         .string(Keys.WORKSPACE, null, true)
                         .string(Keys.STORE, null, true)
-                        .string(Keys.NATIVE_NAME, "Feature type or coverage name inside the store. Omit for single-coverage raster stores.", false)
+                        .string(Keys.NATIVE_NAME, "Feature type or coverage in the store; may be omitted when the store has exactly one", false)
                         .string("name", "Published layer name, defaults to nativeName", false)
                         .string(Keys.TITLE, null, false)
                         .string("srs", "Declared SRS such as EPSG:3857; forces the declared CRS", false).build())
@@ -96,7 +98,8 @@ public class LayerTools {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string(Keys.STORE));
                 if (store instanceof DataStoreInfo ds) {
-                    return publishVector(ctx, ds, new VectorRequest(args.string(Keys.NATIVE_NAME), args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null));
+                    String nativeName = args.has(Keys.NATIVE_NAME) ? args.string(Keys.NATIVE_NAME) : onlyFeatureType(ds);
+                    return publishVector(ctx, ds, new VectorRequest(nativeName, args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null));
                 }
                 if (!(store instanceof CoverageStoreInfo)) {
                     throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
@@ -125,6 +128,17 @@ public class LayerTools {
     }
 
     static final int MAX_BULK = 50;
+    static final int MAX_CANDIDATES = 20;
+
+    String onlyFeatureType(DataStoreInfo ds) throws IOException {
+        List<String> names = new ArrayList<>();
+        for (Name n : catalog.getResourcePool().getDataStore(ds).getNames()) names.add(n.getLocalPart());
+        if (names.size() == 1) return names.get(0);
+        if (names.isEmpty()) throw new ToolException("Store '" + ds.getName() + "' has no feature types");
+        Collections.sort(names);
+        String shown = String.join(", ", names.subList(0, Math.min(names.size(), MAX_CANDIDATES))) + (names.size() > MAX_CANDIDATES ? ", ..." : "");
+        throw new ToolException("nativeName is required: store '" + ds.getName() + "' has " + names.size() + " feature types: " + shown);
+    }
 
     GsTool publishMany() {
         return new GsTool() {

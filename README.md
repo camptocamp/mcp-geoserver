@@ -171,7 +171,7 @@ Tools: `gs_status`, `gs_list_workspaces`, `gs_list_layers`.
 
 > In a new workspace called demo, publish the shapefile /opt/geoserver_data/data/shapefiles/states.shp as layer demo:states, style it with a categorized style on the SUB_REGION attribute, and check that it renders.
 
-Tools: `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store`, `gs_publish_layer` (retried with `nativeName`), `gs_generate_style`, `gs_check_layer`, `gs_validate_style`, `gs_get_map`.
+Tools: `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_generate_style`, `gs_check_layer`, `gs_validate_style`, `gs_get_map`.
 
 > The layer `demo:states` is published in the new `demo` workspace, styled by SUB_REGION, and renders correctly.
 > Style `demo:states_sub_region`: categorized, 9 classes, set as the layer default.
