@@ -154,13 +154,36 @@ Read-only MCP resources mirror the read tools, for clients that browse resources
 
 They run the matching tool with the caller's credentials, so permissions and limits are the same.
 
-## Example session
+## Example sessions
 
-```
-> Publish /data/ortho.tif as ortho:2026 with a 60% opacity style and show me the result.
-```
+Three real runs against the demo data of a local GeoServer (Claude Haiku). Answers are trimmed.
 
-Claude calls `gs_create_workspace`, `gs_create_store` (type GeoTIFF), `gs_publish_layer`, `gs_put_style`, `gs_update_layer`, then `gs_get_map` and looks at the PNG. With verbose on, each step also prints the curl equivalent.
+### 1. What is on this GeoServer?
+
+> What is on this GeoServer? Give me a short overview: version, workspaces, and the number of layers.
+
+Tools: `gs_status`, `gs_list_workspaces`, `gs_list_layers`.
+
+> GeoServer is 3.0.1 with 54 published layers across 8 workspaces. The catalog also has 17 stores, 5 layer groups, 53 styles and 25 modules.
+> `ne` (23 layers, default workspace), `sf` (6), `cmp` (6), `topp` (5), `cmp2` (5), `tiger` (4), `nurc` (4), `t` (1).
+
+### 2. Publish, style and check a layer
+
+> In a new workspace called demo, publish the shapefile /opt/geoserver_data/data/shapefiles/states.shp as layer demo:states, style it with a categorized style on the SUB_REGION attribute, and check that it renders.
+
+Tools: `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store`, `gs_publish_layer` (retried with `nativeName`), `gs_generate_style`, `gs_check_layer`, `gs_validate_style`, `gs_get_map`.
+
+> The layer `demo:states` is published in the new `demo` workspace, styled by SUB_REGION, and renders correctly.
+> Style `demo:states_sub_region`: categorized, 9 classes, set as the layer default.
+> `gs_check_layer` returned HTTP 200, `image/png`, about 60% of pixels painted. `gs_validate_style` reported the style valid.
+
+### 3. Query features and summarize
+
+> In demo:states, which states in the Pacific SUB_REGION have a population above 5 million? List them with their population, and tell me the total.
+
+Tools: `gs_get_layer`, `gs_query_features` (twice).
+
+> Only one Pacific state is above 5 million: California, 29,760,021 (`PERSONS`). Washington (4,866,692) and Oregon (2,842,321) are below the threshold.
 
 ## Security notes
 
