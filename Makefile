@@ -69,8 +69,8 @@ build: ## Package the extension jars (skips tests)
 test: ## Maven unit tests
 	./mvnw -q test
 
-it: ## Maven integration tests (mcp-it)
-	./mvnw -q verify
+it: ## Maven integration tests (mcp-it, needs Docker)
+	./mvnw -q verify -Pit
 
 clean: ## Maven clean
 	./mvnw -q clean

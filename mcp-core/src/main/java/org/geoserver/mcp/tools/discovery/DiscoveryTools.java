@@ -46,10 +46,8 @@ public class DiscoveryTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_list_store_types", Schema.object()
-                        .enumeration("kind", "Restrict to vector or raster", false, Keys.VECTOR, Keys.RASTER).build())
-                        .description("Store types available on this server, discovered at runtime from GeoTools plugins. "
-                                + "Vector types list their connection parameters. Raster types take a single 'url'. "
-                                + "Use a returned name as the 'type' argument of gs_create_store.").build();
+                        .enumeration("kind", null, false, Keys.VECTOR, Keys.RASTER).build())
+                        .description("Store types usable as gs_create_store type; vector ones list their connection parameters, raster ones take url").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String kind = args.string("kind", null);
@@ -106,23 +104,25 @@ public class DiscoveryTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_list_modules", Schema.object().build())
-                        .description("Installed GeoServer modules, extensions and community modules with availability").build();
+                        .description("Installed GeoServer modules, extensions and community modules; available and enabled appear only when false").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 List<Map<String, Object>> out = new ArrayList<>();
-                for (ModuleStatus s : GeoServerExtensions.extensions(ModuleStatus.class)) {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("name", s.getModule());
-                    m.put(Keys.TITLE, s.getName());
-                    m.put("version", s.getVersion().orElse(null));
-                    m.put("category", String.valueOf(s.getCategory()));
-                    m.put("available", s.isAvailable());
-                    m.put(Keys.ENABLED, s.isEnabled());
-                    m.put("message", s.getMessage().orElse(null));
-                    out.add(m);
-                }
+                for (ModuleStatus s : GeoServerExtensions.extensions(ModuleStatus.class)) out.add(module(s));
                 return Map.of("modules", out);
             }
         };
+    }
+
+    static Map<String, Object> module(ModuleStatus s) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("name", s.getModule());
+        m.put(Keys.TITLE, s.getName());
+        m.put("version", s.getVersion().orElse(null));
+        m.put("category", String.valueOf(s.getCategory()));
+        if (!s.isAvailable()) m.put("available", false);
+        if (!s.isEnabled()) m.put(Keys.ENABLED, false);
+        m.put("message", s.getMessage().orElse(null));
+        return m;
     }
 }

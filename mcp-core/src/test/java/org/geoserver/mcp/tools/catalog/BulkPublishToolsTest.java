@@ -2,6 +2,7 @@ package org.geoserver.mcp.tools.catalog;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -63,6 +64,21 @@ public class BulkPublishToolsTest extends McpToolTestSupport {
         List<String> out = new ArrayList<>();
         if (array != null) array.forEach(n -> out.add(n.asText()));
         return out;
+    }
+
+    @Test
+    public void publishDefaultsNativeNameWhenStoreHasOneFeatureType() throws Exception {
+        store("single", Map.of("SOnly", POLY));
+        JsonNode r = run(tool(new LayerTools(getCatalog()).tools(), "gs_publish_layer"), Map.of("workspace", "cite", "store", "single"));
+        assertEquals("SOnly", r.get("nativeName").asText());
+        assertNotNull(getCatalog().getLayerByName("cite:SOnly"));
+    }
+
+    @Test
+    public void publishWithoutNativeNameListsCandidatesWhenSeveral() throws Exception {
+        ToolException e = assertThrows(ToolException.class, () -> runRaw(tool(new LayerTools(getCatalog()).tools(), "gs_publish_layer"), ctx(),
+                Map.of("workspace", "cite", "store", "avail")));
+        assertTrue(e.getMessage(), e.getMessage().contains("3 feature types: AExtra, ANoGeom, ATwoGeoms"));
     }
 
     @Test

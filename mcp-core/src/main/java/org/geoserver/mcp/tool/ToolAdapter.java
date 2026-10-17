@@ -1,5 +1,6 @@
 package org.geoserver.mcp.tool;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -22,23 +23,20 @@ public final class ToolAdapter {
     private ToolAdapter() {}
 
     public static McpStatelessServerFeatures.SyncToolSpecification spec(GsTool tool, McpSettingsStore settings, ObjectMapper json) {
-        McpSchema.Tool def = withVerbose(tool.definition());
+        McpSchema.Tool def = withHints(tool.definition());
+        ObjectMapper out = json.copy().setDefaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL));
         return McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(def)
-                .callHandler((McpTransportContext tctx, McpSchema.CallToolRequest req) -> invoke(tool, settings, json, tctx, req))
+                .callHandler((McpTransportContext tctx, McpSchema.CallToolRequest req) -> invoke(tool, settings, out, tctx, req))
                 .build();
     }
 
-    @SuppressWarnings("unchecked")
-    static McpSchema.Tool withVerbose(McpSchema.Tool tool) {
-        Map<String, Object> schema = new LinkedHashMap<>(tool.inputSchema());
-        Map<String, Object> props = new LinkedHashMap<>((Map<String, Object>) schema.getOrDefault("properties", Map.of()));
-        props.put(Keys.VERBOSE, Map.of("type", "boolean", Keys.DESCRIPTION, "Include the equivalent curl commands in the result"));
-        schema.put("properties", props);
-        return McpSchema.Tool.builder(tool.name(), schema)
+    static McpSchema.Tool withHints(McpSchema.Tool tool) {
+        if (tool.annotations() != null) return tool;
+        return McpSchema.Tool.builder(tool.name(), tool.inputSchema())
                 .title(tool.title())
                 .description(tool.description())
-                .annotations(tool.annotations() != null ? tool.annotations() : ToolHints.of(tool.name()))
+                .annotations(ToolHints.of(tool.name()))
                 .build();
     }
 

@@ -53,11 +53,11 @@ class ToolAdapterTest {
     }
 
     @Test
-    void verboseArgumentIsAddedToEverySchema() {
+    void verboseArgumentIsNotInSchemas() {
         McpSchema.Tool t = ToolAdapter.spec(echo, settings(false), json).tool();
         @SuppressWarnings("unchecked")
         Map<String, Object> props = (Map<String, Object>) t.inputSchema().get("properties");
-        assertTrue(props.containsKey("verbose"));
+        assertFalse(props.containsKey("verbose"));
     }
 
     @Test
@@ -66,6 +66,24 @@ class ToolAdapterTest {
         assertFalse(r.isError());
         assertEquals(1, r.content().size());
         assertEquals("{\"text\":\"hi\"}", ((McpSchema.TextContent) r.content().get(0)).text());
+    }
+
+    @Test
+    void nullFieldsAreOmitted() {
+        GsTool nulls = new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_nulls", Schema.object().build()).description("Nulls").build();
+            }
+            public Object call(ToolContext ctx, Args args) {
+                Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("a", 1);
+                m.put("b", null);
+                m.put("c", List.of(java.util.Collections.singletonMap("d", null)));
+                return m;
+            }
+        };
+        McpSchema.CallToolResult r = call(nulls, false, Map.of());
+        assertEquals("{\"a\":1,\"c\":[{}]}", ((McpSchema.TextContent) r.content().get(0)).text());
     }
 
     @Test
@@ -131,7 +149,7 @@ class ToolAdapterTest {
     @Test
     void explicitAnnotationsAreKept() {
         McpSchema.ToolAnnotations a = ToolHints.of("gs_delete");
-        McpSchema.Tool t = ToolAdapter.withVerbose(McpSchema.Tool.builder("gs_custom", Schema.object().build()).annotations(a).build());
+        McpSchema.Tool t = ToolAdapter.withHints(McpSchema.Tool.builder("gs_custom", Schema.object().build()).annotations(a).build());
         assertEquals(a, t.annotations());
     }
 

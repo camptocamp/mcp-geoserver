@@ -27,6 +27,7 @@ import org.geotools.api.filter.Filter;
 import org.geotools.api.filter.FilterFactory;
 import org.geotools.data.geojson.GeoJSONWriter;
 import org.geotools.data.simple.SimpleFeatureCollection;
+import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.filter.text.cql2.CQLException;
 import org.geotools.filter.text.ecql.ECQL;
@@ -40,6 +41,7 @@ public class DataTools {
     private static final int MAX_IMAGE_DIMENSION = 8192;
     private static final String BAD_BBOX = "bbox needs exactly 4 numbers";
     private static final String BBOX_PARAM = "&BBOX=";
+    static final int MAX_GEOJSON_CHARS = 40_000;
 
     private final Catalog catalog;
     private final GeoServerHttpClient http;
@@ -57,19 +59,20 @@ public class DataTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_query_features", Schema.object()
-                        .string(Keys.LAYER, "Vector layer, workspace:name", true)
+                        .string(Keys.LAYER, Keys.DESC_LAYER_NAME, true)
                         .string("cql", "ECQL filter, e.g. NAME = 'Blue Lake' or POPULATION > 1000", false)
                         .numberArray("bbox", "minx, miny, maxx, maxy in the layer's declared SRS", false)
                         .stringArray("properties", "Attributes to return; omit for all", false)
-                        .integer("maxFeatures", "Maximum features, default 100, capped by the server maxFeatures setting", false).build())
-                        .description("Query a vector layer in process and return GeoJSON").build();
+                        .integer("maxFeatures", "Maximum features, default 20, capped by the server maxFeatures setting", false).build())
+                        .description("Query a vector layer in process and return GeoJSON in EPSG:4326 (lon/lat). "
+                                + "Output stops at maxFeatures or " + MAX_GEOJSON_CHARS + " chars; returned counts features, truncated:true means more matched").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 LayerInfo layer = Lookups.layer(catalog, args.string(Keys.LAYER));
                 if (!(layer.getResource() instanceof FeatureTypeInfo ft)) {
                     throw new ToolException(layerMessage(layer, "is not a vector layer"));
                 }
-                int max = Math.max(1, Math.min(ctx.settings().maxFeatures(), args.integer("maxFeatures", 100)));
+                int max = Math.max(1, Math.min(ctx.settings().maxFeatures(), args.integer("maxFeatures", 20)));
                 FilterFactory ff = CommonFactoryFinder.getFilterFactory();
                 List<Double> bbox = args.numbers("bbox");
                 List<String> props = args.strings("properties");
@@ -78,15 +81,35 @@ public class DataTools {
 
                 FeatureSource<?, ?> fs = ft.getFeatureSource(null, null);
                 Query query = new Query(fs.getSchema().getName().getLocalPart(), filter);
-                query.setMaxFeatures(max);
+                query.setMaxFeatures(max + 1);
                 if (!props.isEmpty()) query.setPropertyNames(props);
                 Object fc = fs.getFeatures(query);
                 if (!(fc instanceof SimpleFeatureCollection sfc)) {
                     throw new ToolException(layerMessage(layer, "is not a simple feature layer; use WFS directly"));
                 }
-                return new Payloads.RawJson(GeoJSONWriter.toGeoJSON(sfc));
+                return new Payloads.RawJson(featureCollection(sfc, max, MAX_GEOJSON_CHARS));
             }
         };
+    }
+
+    static String featureCollection(SimpleFeatureCollection sfc, int max, int budget) {
+        StringBuilder sb = new StringBuilder("{\"type\":\"FeatureCollection\",\"features\":[");
+        int returned = 0;
+        boolean truncated = false;
+        try (SimpleFeatureIterator it = sfc.features()) {
+            while (it.hasNext() && !truncated) {
+                String feature = GeoJSONWriter.toGeoJSON(it.next());
+                truncated = returned == max || sb.length() + feature.length() > budget;
+                if (!truncated) {
+                    if (returned > 0) sb.append(',');
+                    sb.append(feature);
+                    returned++;
+                }
+            }
+        }
+        sb.append("],\"returned\":").append(returned);
+        if (truncated) sb.append(",\"truncated\":true");
+        return sb.append('}').toString();
     }
 
     static Filter cqlFilter(Args args, FilterFactory ff) {
@@ -126,12 +149,12 @@ public class DataTools {
                 return McpSchema.Tool.builder("gs_get_map", Schema.object()
                         .stringArray(Keys.LAYERS, "Layer or layer group names", true)
                         .numberArray("bbox", "minx, miny, maxx, maxy", true)
-                        .integer(WIDTH, "Image width in pixels", true)
-                        .integer(HEIGHT, "Image height in pixels", true)
+                        .integer(WIDTH, "Pixels", true)
+                        .integer(HEIGHT, "Pixels", true)
                         .string("srs", "CRS of the bbox, default EPSG:4326", false)
                         .stringArray(Keys.STYLES, "Style per layer; empty string for default", false)
                         .string(Keys.FORMAT, "Image MIME type, default image/png", false)
-                        .bool("transparent", "Transparent background", false).build())
+                        .bool("transparent", null, false).build())
                         .description("Render a WMS GetMap and return the image so you can look at it").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -161,12 +184,11 @@ public class DataTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_check_layer", Schema.object()
-                        .string("name", "Layer name, workspace:name", true)
+                        .string("name", Keys.DESC_LAYER_NAME, true)
                         .numberArray("bbox", "minx, miny, maxx, maxy in EPSG:4326; default the layer's lat/lon bounds", false)
-                        .integer(WIDTH, "Image width in pixels, default 256", false)
-                        .integer(HEIGHT, "Image height in pixels, default 256", false).build())
-                        .description("Render one layer with WMS GetMap and report text only: status, content type, ServiceException text, "
-                                + "ratio of painted pixels, elapsed ms. Use this instead of gs_get_map to check that a layer and its style render.").build();
+                        .integer(WIDTH, "Pixels, default 256", false)
+                        .integer(HEIGHT, "Pixels, default 256", false).build())
+                        .description("Text-only GetMap check of one layer: status, content type, ServiceException, painted pixel ratio, elapsed ms. Prefer over gs_get_map to verify rendering").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 LayerInfo layer = Lookups.layer(catalog, args.string("name"));

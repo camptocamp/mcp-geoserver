@@ -27,7 +27,7 @@ Works on vanilla GeoServer 3.0.x and GeoServer Cloud 3.0.x.
 | Target | State |
 | --- | --- |
 | Vanilla GeoServer 3.0.1 | Works. The extension loads, `/mcp` lists every tool, anonymous gets 403, disabled gives 503. The Testcontainers IT (`./mvnw -pl mcp-it -am verify -Pit`) publishes a generated GeoTIFF, styles it, renders it with `gs_get_map` and round-trips `gs_gwc_set_tile_layer`. |
-| GeoServer Cloud 3.0.1 | Works. Verified with the upstream `v3.0.1` compose (datadir catalog) and the derived `geoserver-cloud-rest:3.0.1.1` image from `docker/cloud`: settings via `/rest/mcp/settings` persist across a restconfig restart, `/mcp` through the gateway lists 34 tools (verified before `gs_set_time_dimension` was added), anonymous gets 403, disabled gives 503, `docker/cloud/smoke.sh` passes. Exercised `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store` (local GeoTIFF and a public `https://` COG), `gs_publish_layer`, `gs_get_map` and `gs_check_layer` through `internalBaseUrl` on the wms service, `gs_query_features`, `gs_gwc_list_gridsets` on the gwc service, `gs_delete`. |
+| GeoServer Cloud 3.0.1 | Works. Verified with the upstream `v3.0.1` compose (datadir catalog) and the derived `geoserver-cloud-rest:3.0.1.1` image from `docker/cloud`: settings via `/rest/mcp/settings` persist across a restconfig restart, `/mcp` through the gateway lists the tools, anonymous gets 403, disabled gives 503, `docker/cloud/smoke.sh` passes. Exercised `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store` (local GeoTIFF and a public `https://` COG), `gs_publish_layer`, `gs_get_map` and `gs_check_layer` through `internalBaseUrl` on the wms service, `gs_query_features`, `gs_gwc_list_gridsets` on the gwc service, `gs_delete`. |
 
 ## Install
 
@@ -97,16 +97,16 @@ Notes:
 Three ways, all persisted in the GeoServer global settings:
 
 1. Admin UI: Services, MCP Server (vanilla only).
-2. REST: `GET` and `PUT /rest/mcp/settings` with `{"enabled":true,"allowedRoles":["ROLE_ADMINISTRATOR"],"verbose":false,"internalBaseUrl":"","readOnly":false,"maxListResults":500,"maxFeatures":10000}`. Any subset of keys may be sent.
-3. Any tool call with `"verbose": true` for that call only.
+2. REST: `GET` and `PUT /rest/mcp/settings` with `{"enabled":true,"allowedRoles":["ROLE_ADMINISTRATOR"],"verbose":false,"internalBaseUrl":"","readOnly":false,"maxListResults":100,"maxFeatures":10000}`. Any subset of keys may be sent.
+3. Any tool call with `"verbose": true` for that call only. The argument is not declared in the tool schemas, to keep them small; the server instructions tell the client it exists.
 
 A disabled server answers HTTP 503 on `/mcp`. Callers without an allowed role get 403.
 
 ## Read-only mode and limits
 
 - `readOnly`: only tools annotated read-only run; every other call answers an error naming the mode. Role setup is untouched.
-- `maxListResults` (default 500): any list in a tool result is cut to this length and the result gets `"truncated": {"<key>": <total>}`.
-- `maxFeatures` (default 10000): upper bound for `gs_query_features`, whatever the caller asks.
+- `maxListResults` (default 100): any list in a tool result is cut to this length and the result gets `"truncated": {"<key>": <total>}`.
+- `maxFeatures` (default 10000): upper bound for `gs_query_features`, whatever the caller asks. A call returns 20 features unless it asks for more, and output stops at 40,000 characters.
 
 All three are on the admin page and in the REST settings.
 
@@ -116,7 +116,7 @@ When verbose is on, every tool result carries a second block titled `Equivalent 
 
 ## Tools
 
-All tools are prefixed `gs_` and accept an optional `verbose` boolean. `AGENTS.md` lists every tool with its arguments.
+All tools are prefixed `gs_`. [docs/agents/tools.md](docs/agents/tools.md) lists every tool with its arguments.
 
 Read
 - `gs_status`: versions, proxy base URL, counts
@@ -132,12 +132,12 @@ Discovery
 
 Write
 - `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_publish_layers` (bulk, up to 50), `gs_create_sql_view`, `gs_update_layer`, `gs_set_time_dimension` (vector attribute or ImageMosaic time, presentation, default value)
-- `gs_put_style`, `gs_generate_style` (categorized, equal interval, quantile or Jenks classes computed from the layer's data, colour ramps, optional default style)
+- `gs_put_style`, `gs_generate_style` (categorized, equal interval, quantile or Jenks classes computed from the layer's data, colour ramps, optional default style; the SLD itself comes back only in verbose mode)
 - `gs_create_layer_group`, `gs_update_layer_group` (title, abstract, keywords, mode, add or remove members including nested groups, or replace the list)
 - `gs_delete`, `gs_reload`
 
 Data
-- `gs_query_features`: returns GeoJSON
+- `gs_query_features`: returns GeoJSON in EPSG:4326 (lon/lat), 20 features by default, with `returned` and `truncated: true` when the feature or character limit cut the result
 - `gs_get_map`: returns a rendered image
 
 GeoWebCache (via the GWC REST API)
@@ -154,13 +154,48 @@ Read-only MCP resources mirror the read tools, for clients that browse resources
 
 They run the matching tool with the caller's credentials, so permissions and limits are the same.
 
-## Example session
+## Example sessions
 
-```
-> Publish /data/ortho.tif as ortho:2026 with a 60% opacity style and show me the result.
-```
+Four real runs against the demo data of a local GeoServer (Claude Haiku). Answers are trimmed.
 
-Claude calls `gs_create_workspace`, `gs_create_store` (type GeoTIFF), `gs_publish_layer`, `gs_put_style`, `gs_update_layer`, then `gs_get_map` and looks at the PNG. With verbose on, each step also prints the curl equivalent.
+### 1. What is on this GeoServer?
+
+> What is on this GeoServer? Give me a short overview: version, workspaces, and the number of layers.
+
+Tools: `gs_status`, `gs_list_workspaces`, `gs_list_layers`.
+
+> GeoServer is 3.0.1 with 54 published layers across 8 workspaces. The catalog also has 17 stores, 5 layer groups, 53 styles and 25 modules.
+> `ne` (23 layers, default workspace), `sf` (6), `cmp` (6), `topp` (5), `cmp2` (5), `tiger` (4), `nurc` (4), `t` (1).
+
+### 2. Publish, style and check a layer
+
+> In a new workspace called demo, publish the shapefile /opt/geoserver_data/data/shapefiles/states.shp as layer demo:states, style it with a categorized style on the SUB_REGION attribute, and check that it renders.
+
+Tools: `gs_status`, `gs_list_workspaces`, `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_generate_style`, `gs_check_layer`, `gs_validate_style`, `gs_get_map`.
+
+> The layer `demo:states` is published in the new `demo` workspace, styled by SUB_REGION, and renders correctly.
+> Style `demo:states_sub_region`: categorized, 9 classes, set as the layer default.
+> `gs_check_layer` returned HTTP 200, `image/png`, about 60% of pixels painted. `gs_validate_style` reported the style valid.
+
+### 3. Query features and summarize
+
+> In demo:states, which states in the Pacific SUB_REGION have a population above 5 million? List them with their population, and tell me the total.
+
+Tools: `gs_get_layer`, `gs_query_features` (twice).
+
+> Only one Pacific state is above 5 million: California, 29,760,021 (`PERSONS`). Washington (4,866,692) and Oregon (2,842,321) are below the threshold.
+
+### 4. Show the REST calls (verbose)
+
+> List the layers in the topp workspace, and show me the equivalent curl commands (verbose).
+
+Tools: `gs_list_layers` with `verbose: true`.
+
+> The `topp` workspace has five layers: `topp:states`, `topp:tasmania_cities`, `topp:tasmania_roads`, `topp:tasmania_state_boundaries`, `topp:tasmania_water_bodies`.
+>
+> ```bash
+> curl -u "$GS_AUTH" -X GET 'http://localhost:8080/geoserver/rest/workspaces/topp/layers.json'
+> ```
 
 ## Security notes
 

@@ -20,7 +20,6 @@ import org.geoserver.mcp.tool.ToolContext;
 import org.geoserver.mcp.tool.Keys;
 
 public class LayerGroupTools {
-    private static final String GROUP_NAME = "Layer group name";
     private static final String WORKSPACE_OR_GLOBAL = "Workspace; omit for global";
     private static final String MODE = "mode";
     private static final String KEYWORDS = "keywords";
@@ -46,7 +45,7 @@ public class LayerGroupTools {
     GsTool list() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_list_layer_groups", Schema.object().string(Keys.WORKSPACE, "Restrict to this workspace", false).build())
+                return McpSchema.Tool.builder("gs_list_layer_groups", Schema.object().string(Keys.WORKSPACE, null, false).build())
                         .description("List layer groups").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -64,7 +63,8 @@ public class LayerGroupTools {
                     Map<String, Object> v = Views.layerGroup(g);
                     v.put("layerCount", g.getLayers().size());
                     v.remove(Keys.LAYERS);
-                    out.add(v);
+                    v.remove("bounds");
+                    out.add(Views.listRow(v, args.has(Keys.WORKSPACE)));
                 }
                 return Map.of("layerGroups", out);
             }
@@ -75,7 +75,7 @@ public class LayerGroupTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_get_layer_group", Schema.object()
-                        .string("name", GROUP_NAME, true)
+                        .string("name", null, true)
                         .string(Keys.WORKSPACE, WORKSPACE_OR_GLOBAL, false).build())
                         .description("Describe a layer group: mode, ordered layers with styles, bounds").build();
             }
@@ -92,12 +92,12 @@ public class LayerGroupTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_create_layer_group", Schema.object()
-                        .string("name", GROUP_NAME, true)
+                        .string("name", null, true)
                         .string(Keys.WORKSPACE, WORKSPACE_OR_GLOBAL, false)
-                        .string(Keys.TITLE, "Title", false)
+                        .string(Keys.TITLE, null, false)
                         .stringArray(Keys.LAYERS, "Ordered layer names, bottom first", true)
                         .stringArray(Keys.STYLES, "Parallel style names; empty string means the layer's default", false)
-                        .enumeration(MODE, "Group mode", false, MODES).build())
+                        .enumeration(MODE, null, false, MODES).build())
                         .description("Create a layer group and compute its bounds").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
@@ -134,11 +134,11 @@ public class LayerGroupTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_update_layer_group", Schema.object()
-                        .string("name", GROUP_NAME, true)
+                        .string("name", null, true)
                         .string(Keys.WORKSPACE, WORKSPACE_OR_GLOBAL, false)
-                        .string(Keys.TITLE, "New title", false)
-                        .string(Keys.ABSTRACT, "New abstract", false)
-                        .enumeration(MODE, "New group mode", false, MODES)
+                        .string(Keys.TITLE, null, false)
+                        .string(Keys.ABSTRACT, null, false)
+                        .enumeration(MODE, null, false, MODES)
                         .stringArray(KEYWORDS, "Replace the keywords", false)
                         .stringArray(ADD, "Layers or layer groups to add on top, in order", false)
                         .stringArray(ADD_STYLES, "Parallel styles for add; empty string means the default", false)

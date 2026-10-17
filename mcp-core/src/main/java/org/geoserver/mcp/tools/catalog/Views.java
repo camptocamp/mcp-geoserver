@@ -94,6 +94,12 @@ public final class Views {
         return m;
     }
 
+    public static Map<String, Object> listRow(Map<String, Object> m, boolean workspaceFiltered) {
+        if (Boolean.TRUE.equals(m.get(Keys.ENABLED))) m.remove(Keys.ENABLED);
+        if (workspaceFiltered) m.remove(Keys.WORKSPACE);
+        return m;
+    }
+
     public static Map<String, Object> layer(LayerInfo l) {
         ResourceInfo r = l.getResource();
         Map<String, Object> m = layerSummary(l);

@@ -41,7 +41,7 @@ public class WorkspaceTools {
     GsTool get() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_get_workspace", Schema.object().string("name", Keys.DESC_WORKSPACE_NAME, true).build())
+                return McpSchema.Tool.builder("gs_get_workspace", Schema.object().string("name", null, true).build())
                         .description("Describe one workspace: namespace, stores, layer count").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -65,7 +65,7 @@ public class WorkspaceTools {
                 return McpSchema.Tool.builder("gs_create_workspace", Schema.object()
                         .string("name", "Workspace name (also the namespace prefix)", true)
                         .string("namespaceUri", "Namespace URI, defaults to http://<name>", false)
-                        .bool(Keys.ISOLATED, "Isolated workspace", false).build())
+                        .bool(Keys.ISOLATED, null, false).build())
                         .description("Create a workspace and its namespace. Returns the existing one with created=false if it already exists.").build();
             }
             public Object call(ToolContext ctx, Args args) {

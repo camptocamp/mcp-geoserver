@@ -214,12 +214,12 @@ public class GwcTools {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_gwc_seed", Schema.object()
                         .string(Keys.LAYER, DESC_TILE_LAYER, true)
-                        .string("gridset", "Gridset name, e.g. EPSG:4326 or EPSG:900913", true)
-                        .integer(ZOOM_START, "First zoom level", true)
-                        .integer(ZOOM_STOP, "Last zoom level", true)
+                        .string("gridset", "e.g. EPSG:4326 or EPSG:900913", true)
+                        .integer(ZOOM_START, null, true)
+                        .integer(ZOOM_STOP, null, true)
                         .string(Keys.FORMAT, "Tile MIME type, e.g. image/png", true)
-                        .enumeration(OPERATION, "seed, reseed or truncate", false, "seed", "reseed", "truncate")
-                        .integer("threads", "Thread count, default 1", false)
+                        .enumeration(OPERATION, "Default seed", false, "seed", "reseed", "truncate")
+                        .integer("threads", "Default 1", false)
                         .numberArray("bbox", "minx, miny, maxx, maxy in the gridset CRS; omit for the whole layer", false).build())
                         .description("Submit a seed, reseed or truncate job. Returns immediately; poll gs_gwc_list_tasks.").build();
             }
@@ -292,7 +292,7 @@ public class GwcTools {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_gwc_kill_tasks", Schema.object()
                         .string(Keys.LAYER, "Only tasks of this tile layer; omit for all", false)
-                        .enumeration(WHICH, "running, pending or all (default)", false, "running", "pending", "all").build())
+                        .enumeration(WHICH, "Default all", false, "running", "pending", "all").build())
                         .description("Stop seed tasks").build();
             }
             public Object call(ToolContext ctx, Args args) {

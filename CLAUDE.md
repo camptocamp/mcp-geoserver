@@ -1,2 +1,2 @@
 Read AGENTS.md first.
-Security testing: see AGENTS.md > Security testing.
+Security testing: see docs/agents/security.md.

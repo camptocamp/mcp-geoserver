@@ -12,6 +12,7 @@ import org.geoserver.catalog.WorkspaceInfo;
 import java.io.IOException;
 import org.geotools.api.feature.type.FeatureType;
 import org.geotools.api.feature.type.GeometryDescriptor;
+import org.geotools.api.feature.type.Name;
 import org.geotools.api.feature.type.PropertyDescriptor;
 import org.geotools.feature.NameImpl;
 import org.geotools.geometry.jts.Geometries;
@@ -20,6 +21,7 @@ import org.geotools.jdbc.VirtualTable;
 import org.geoserver.mcp.tool.ToolException;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.geoserver.catalog.Catalog;
@@ -49,8 +51,8 @@ public class LayerTools {
     GsTool list() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_list_layers", Schema.object().string(Keys.WORKSPACE, "Restrict to this workspace", false).build())
-                        .description("List published layers as workspace:name with type and title").build();
+                return McpSchema.Tool.builder("gs_list_layers", Schema.object().string(Keys.WORKSPACE, null, false).build())
+                        .description("List published layers as workspace:name with type and title; enabled appears only when false").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String ws = args.string(Keys.WORKSPACE, null);
@@ -59,7 +61,7 @@ public class LayerTools {
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (LayerInfo l : catalog.getLayers()) {
                     String lws = l.getResource().getStore().getWorkspace().getName();
-                    if (ws == null || ws.equals(lws)) out.add(Views.layerSummary(l));
+                    if (ws == null || ws.equals(lws)) out.add(Views.listRow(Views.layerSummary(l), false));
                 }
                 return Map.of(Keys.LAYERS, out);
             }
@@ -69,7 +71,7 @@ public class LayerTools {
     GsTool get() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_get_layer", Schema.object().string("name", "Layer name, workspace:name or plain name", true).build())
+                return McpSchema.Tool.builder("gs_get_layer", Schema.object().string("name", Keys.DESC_LAYER_NAME, true).build())
                         .description("Describe a layer: store, native name, SRS, bounds, styles, attributes").build();
             }
             public Object call(ToolContext ctx, Args args) {
@@ -84,19 +86,20 @@ public class LayerTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_publish_layer", Schema.object()
-                        .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
-                        .string(Keys.STORE, "Store name", true)
-                        .string(Keys.NATIVE_NAME, "Feature type or coverage name inside the store. Omit for single-coverage raster stores.", false)
+                        .string(Keys.WORKSPACE, null, true)
+                        .string(Keys.STORE, null, true)
+                        .string(Keys.NATIVE_NAME, "Feature type or coverage in the store; may be omitted when the store has exactly one", false)
                         .string("name", "Published layer name, defaults to nativeName", false)
-                        .string(Keys.TITLE, "Layer title", false)
+                        .string(Keys.TITLE, null, false)
                         .string("srs", "Declared SRS such as EPSG:3857; forces the declared CRS", false).build())
-                        .description("Publish a layer from an existing store. Computes bounds and looks up the SRS. Returns a compact summary; gs_get_layer has the attributes.").build();
+                        .description("Publish one layer from a store; computes bounds and SRS. Compact summary, gs_get_layer has the attributes").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string(Keys.STORE));
                 if (store instanceof DataStoreInfo ds) {
-                    return publishVector(ctx, ds, new VectorRequest(args.string(Keys.NATIVE_NAME), args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null));
+                    String nativeName = args.has(Keys.NATIVE_NAME) ? args.string(Keys.NATIVE_NAME) : onlyFeatureType(ds);
+                    return publishVector(ctx, ds, new VectorRequest(nativeName, args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null));
                 }
                 if (!(store instanceof CoverageStoreInfo)) {
                     throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
@@ -125,18 +128,28 @@ public class LayerTools {
     }
 
     static final int MAX_BULK = 50;
+    static final int MAX_CANDIDATES = 20;
+
+    String onlyFeatureType(DataStoreInfo ds) throws IOException {
+        List<String> names = new ArrayList<>();
+        for (Name n : catalog.getResourcePool().getDataStore(ds).getNames()) names.add(n.getLocalPart());
+        if (names.size() == 1) return names.get(0);
+        if (names.isEmpty()) throw new ToolException("Store '" + ds.getName() + "' has no feature types");
+        Collections.sort(names);
+        String shown = String.join(", ", names.subList(0, Math.min(names.size(), MAX_CANDIDATES))) + (names.size() > MAX_CANDIDATES ? ", ..." : "");
+        throw new ToolException("nativeName is required: store '" + ds.getName() + "' has " + names.size() + " feature types: " + shown);
+    }
 
     GsTool publishMany() {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_publish_layers", Schema.object()
-                        .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
+                        .string(Keys.WORKSPACE, null, true)
                         .string(Keys.STORE, "Vector store name", true)
                         .stringArray("names", "Feature type names to publish; see gs_get_store available", false)
                         .bool("all", "Publish every unpublished feature type of the store", false)
                         .bool("includeNonSpatial", "Also publish tables without a geometry column, default false", false).build())
-                        .description("Publish up to " + MAX_BULK + " feature types of one store in one call. Each item succeeds or fails on its own; "
-                                + "geometryless tables are skipped unless includeNonSpatial.").build();
+                        .description("Publish up to " + MAX_BULK + " feature types of one store; per-item success or error, geometryless tables skipped unless includeNonSpatial").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
@@ -182,13 +195,13 @@ public class LayerTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_create_sql_view", Schema.object()
-                        .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
+                        .string(Keys.WORKSPACE, null, true)
                         .string(Keys.STORE, "JDBC store name (PostGIS and the like)", true)
                         .string("name", "View and layer name", true)
                         .string("sql", "SELECT statement; pick one geometry column here to fix multi-geometry tables", true)
                         .string(GEOMETRY, "Geometry column name in the SELECT", true)
                         .string(GEOMETRY_TYPE, "Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon or Geometry", true)
-                        .integer("srid", "EPSG code of the geometry column", true)
+                        .integer("srid", "EPSG code", true)
                         .string(KEY_COLUMN, "Column used as feature id; omit for generated ids", false).build())
                         .description("Create a SQL view on a JDBC store and publish it as a layer").build();
             }
@@ -303,13 +316,13 @@ public class LayerTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_update_layer", Schema.object()
-                        .string("name", "Layer name, workspace:name", true)
-                        .string(Keys.TITLE, "New title", false)
-                        .string(Keys.ABSTRACT, "New abstract", false)
+                        .string("name", Keys.DESC_LAYER_NAME, true)
+                        .string(Keys.TITLE, null, false)
+                        .string(Keys.ABSTRACT, null, false)
                         .string(Keys.DEFAULT_STYLE, "Style name, optionally workspace:name", false)
                         .stringArray(Keys.STYLES, "Additional style names, replaces the list", false)
-                        .bool(Keys.ENABLED, "Enable or disable", false)
-                        .bool(Keys.ADVERTISED, "Advertise in capabilities", false).build())
+                        .bool(Keys.ENABLED, null, false)
+                        .bool(Keys.ADVERTISED, null, false).build())
                         .description("Update layer metadata, default style, additional styles, enabled and advertised flags").build();
             }
             public Object call(ToolContext ctx, Args args) {

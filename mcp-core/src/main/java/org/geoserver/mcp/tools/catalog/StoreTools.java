@@ -45,8 +45,8 @@ public class StoreTools {
     GsTool list() {
         return new GsTool() {
             public McpSchema.Tool definition() {
-                return McpSchema.Tool.builder("gs_list_stores", Schema.object().string(Keys.WORKSPACE, "Restrict to this workspace", false).build())
-                        .description("List vector, raster, WMS and WMTS stores").build();
+                return McpSchema.Tool.builder("gs_list_stores", Schema.object().string(Keys.WORKSPACE, null, false).build())
+                        .description("List vector, raster, WMS and WMTS stores; enabled appears only when false").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 List<StoreInfo> stores;
@@ -66,7 +66,7 @@ public class StoreTools {
                 for (StoreInfo s : stores) {
                     Map<String, Object> v = Views.store(s);
                     v.remove("connectionParameters");
-                    out.add(v);
+                    out.add(Views.listRow(v, args.has(Keys.WORKSPACE)));
                 }
                 return Map.of("stores", out);
             }
@@ -77,12 +77,11 @@ public class StoreTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_get_store", Schema.object()
-                        .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
-                        .string("name", "Store name", true)
+                        .string(Keys.WORKSPACE, null, true)
+                        .string("name", null, true)
                         .stringArray("names", "Vector stores: describe these feature types (geometry columns, types, SRIDs)", false)
                         .bool("detail", "Vector stores: describe every published and available feature type; at most " + LayerTools.MAX_BULK, false).build())
-                        .description("Describe a store: type, connection parameters (secrets masked), published resources, "
-                                + "available unpublished feature types; names or detail add geometry columns per table").build();
+                        .description("Describe a store: type, masked connection parameters, published and available feature types; names or detail add geometry columns").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 StoreInfo s = Lookups.store(catalog, args.string(Keys.WORKSPACE), args.string("name"));
@@ -162,11 +161,11 @@ public class StoreTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_create_store", Schema.object()
-                        .string(Keys.WORKSPACE, Keys.DESC_WORKSPACE_NAME, true)
-                        .string("name", "Store name", true)
+                        .string(Keys.WORKSPACE, null, true)
+                        .string("name", null, true)
                         .string("type", "Store type name from gs_list_store_types, e.g. Shapefile, PostGIS, GeoTIFF, GeoPackage", true)
                         .map("params", "Connection parameters. Vector: keys from gs_list_store_types. Raster: {\"url\": ...}; a GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true).build())
-                        .description("Create a vector or raster store. Type is matched at runtime against installed GeoTools plugins, so community formats work when installed.").build();
+                        .description("Create a vector or raster store; type is matched at runtime against installed GeoTools plugins").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
