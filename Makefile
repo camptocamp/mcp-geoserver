@@ -64,13 +64,13 @@ wait: ## Wait until GeoServer answers (polls from inside the container)
 
 ## --- build / test ---
 build: ## Package the extension jars (skips tests)
-	./mvnw -q -DskipTests package
+	./mvnw -q -DskipTests clean package
 
 test: ## Maven unit tests
 	./mvnw -q test
 
 it: ## Maven integration tests (mcp-it, needs Docker)
-	./mvnw -q verify -Pit
+	./mvnw -q clean verify -Pit
 
 clean: ## Maven clean
 	./mvnw -q clean

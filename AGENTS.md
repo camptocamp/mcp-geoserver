@@ -18,7 +18,7 @@ A GeoServer extension exposing an MCP server at `/mcp`.
 ./mvnw -q verify                 # all unit tests
 ./mvnw -q -pl :gs-mcp-core test      # one module
 ./mvnw -q verify -Pit            # integration test, needs Docker
-./mvnw -q package -DskipTests    # produces mcp-geoserver/target/geoserver-mcp-<version>-bin.zip and fills docker/vanilla/additional_libs/
+./mvnw -q clean package -DskipTests    # produces mcp-geoserver/target/geoserver-mcp-<version>-bin.zip and fills docker/vanilla/additional_libs/
 ```
 
 Tests extending `GeoServerSystemTestSupport` are JUnit 4 (`org.junit.Test`). Everything else is JUnit 5.
