@@ -28,7 +28,7 @@ Tests extending `GeoServerSystemTestSupport` are JUnit 4 (`org.junit.Test`). Eve
 - Java 17 source level. Records for data, no Lombok.
 - Tool names `gs_<verb>_<noun>`. One class per tool group under `org.geoserver.mcp.tools`.
 - A tool is a `GsTool`: `definition()` returns the `McpSchema.Tool`, `call(ToolContext, Args)` returns a payload (`Map`, record, `RawJson`, or `ImagePayload`). Throw `ToolException` with a one-line message for user errors.
-- Every tool that maps to a REST call records it with `ctx.trace().curl(...)` so verbose mode works.
+- Every tool that maps to a REST call records it with `ctx.trace().curl(...)` so verbose mode works. `verbose` is honoured on every call but not declared in tool schemas; the server instructions in `McpServerHolder` announce it.
 - Settings live in `GeoServerInfo` metadata, keys `mcp.*`. Never add a `ServiceInfo` subtype (breaks GeoServer Cloud pgconfig).
 - Settings reach tools through `ToolContext.settings()`. `ToolAdapter` enforces `readOnly` from the tool's read-only hint and caps lists to `maxListResults`, so a new read tool must be in `ToolHints.READ`.
 - MCP resources (`ToolResources`) are thin URIs over read tools; add one there rather than duplicating tool logic.

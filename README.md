@@ -97,16 +97,16 @@ Notes:
 Three ways, all persisted in the GeoServer global settings:
 
 1. Admin UI: Services, MCP Server (vanilla only).
-2. REST: `GET` and `PUT /rest/mcp/settings` with `{"enabled":true,"allowedRoles":["ROLE_ADMINISTRATOR"],"verbose":false,"internalBaseUrl":"","readOnly":false,"maxListResults":500,"maxFeatures":10000}`. Any subset of keys may be sent.
-3. Any tool call with `"verbose": true` for that call only.
+2. REST: `GET` and `PUT /rest/mcp/settings` with `{"enabled":true,"allowedRoles":["ROLE_ADMINISTRATOR"],"verbose":false,"internalBaseUrl":"","readOnly":false,"maxListResults":100,"maxFeatures":10000}`. Any subset of keys may be sent.
+3. Any tool call with `"verbose": true` for that call only. The argument is not declared in the tool schemas, to keep them small; the server instructions tell the client it exists.
 
 A disabled server answers HTTP 503 on `/mcp`. Callers without an allowed role get 403.
 
 ## Read-only mode and limits
 
 - `readOnly`: only tools annotated read-only run; every other call answers an error naming the mode. Role setup is untouched.
-- `maxListResults` (default 500): any list in a tool result is cut to this length and the result gets `"truncated": {"<key>": <total>}`.
-- `maxFeatures` (default 10000): upper bound for `gs_query_features`, whatever the caller asks.
+- `maxListResults` (default 100): any list in a tool result is cut to this length and the result gets `"truncated": {"<key>": <total>}`.
+- `maxFeatures` (default 10000): upper bound for `gs_query_features`, whatever the caller asks. A call returns 20 features unless it asks for more, and output stops at 40,000 characters.
 
 All three are on the admin page and in the REST settings.
 
@@ -116,7 +116,7 @@ When verbose is on, every tool result carries a second block titled `Equivalent 
 
 ## Tools
 
-All tools are prefixed `gs_` and accept an optional `verbose` boolean. `docs/agents/tools.md` lists every tool with its arguments.
+All tools are prefixed `gs_` and accept an optional `verbose` boolean, which the server instructions announce instead of every tool schema. `docs/agents/tools.md` lists every tool with its arguments.
 
 Read
 - `gs_status`: versions, proxy base URL, counts
@@ -132,12 +132,12 @@ Discovery
 
 Write
 - `gs_create_workspace`, `gs_create_store`, `gs_publish_layer`, `gs_publish_layers` (bulk, up to 50), `gs_create_sql_view`, `gs_update_layer`, `gs_set_time_dimension` (vector attribute or ImageMosaic time, presentation, default value)
-- `gs_put_style`, `gs_generate_style` (categorized, equal interval, quantile or Jenks classes computed from the layer's data, colour ramps, optional default style)
+- `gs_put_style`, `gs_generate_style` (categorized, equal interval, quantile or Jenks classes computed from the layer's data, colour ramps, optional default style; the SLD itself comes back only in verbose mode)
 - `gs_create_layer_group`, `gs_update_layer_group` (title, abstract, keywords, mode, add or remove members including nested groups, or replace the list)
 - `gs_delete`, `gs_reload`
 
 Data
-- `gs_query_features`: returns GeoJSON
+- `gs_query_features`: returns GeoJSON in EPSG:4326 (lon/lat), 20 features by default, with `returned` and `truncated: true` when the feature or character limit cut the result
 - `gs_get_map`: returns a rendered image
 
 GeoWebCache (via the GWC REST API)

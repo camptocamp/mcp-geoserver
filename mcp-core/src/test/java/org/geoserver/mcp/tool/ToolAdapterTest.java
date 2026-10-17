@@ -53,11 +53,11 @@ class ToolAdapterTest {
     }
 
     @Test
-    void verboseArgumentIsAddedToEverySchema() {
+    void verboseArgumentIsNotInSchemas() {
         McpSchema.Tool t = ToolAdapter.spec(echo, settings(false), json).tool();
         @SuppressWarnings("unchecked")
         Map<String, Object> props = (Map<String, Object>) t.inputSchema().get("properties");
-        assertTrue(props.containsKey("verbose"));
+        assertFalse(props.containsKey("verbose"));
     }
 
     @Test
@@ -149,7 +149,7 @@ class ToolAdapterTest {
     @Test
     void explicitAnnotationsAreKept() {
         McpSchema.ToolAnnotations a = ToolHints.of("gs_delete");
-        McpSchema.Tool t = ToolAdapter.withVerbose(McpSchema.Tool.builder("gs_custom", Schema.object().build()).annotations(a).build());
+        McpSchema.Tool t = ToolAdapter.withHints(McpSchema.Tool.builder("gs_custom", Schema.object().build()).annotations(a).build());
         assertEquals(a, t.annotations());
     }
 

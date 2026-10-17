@@ -110,19 +110,21 @@ public class DiscoveryTools {
             }
             public Object call(ToolContext ctx, Args args) {
                 List<Map<String, Object>> out = new ArrayList<>();
-                for (ModuleStatus s : GeoServerExtensions.extensions(ModuleStatus.class)) {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("name", s.getModule());
-                    m.put(Keys.TITLE, s.getName());
-                    m.put("version", s.getVersion().orElse(null));
-                    m.put("category", String.valueOf(s.getCategory()));
-                    if (!s.isAvailable()) m.put("available", false);
-                    if (!s.isEnabled()) m.put(Keys.ENABLED, false);
-                    m.put("message", s.getMessage().orElse(null));
-                    out.add(m);
-                }
+                for (ModuleStatus s : GeoServerExtensions.extensions(ModuleStatus.class)) out.add(module(s));
                 return Map.of("modules", out);
             }
         };
+    }
+
+    static Map<String, Object> module(ModuleStatus s) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("name", s.getModule());
+        m.put(Keys.TITLE, s.getName());
+        m.put("version", s.getVersion().orElse(null));
+        m.put("category", String.valueOf(s.getCategory()));
+        if (!s.isAvailable()) m.put("available", false);
+        if (!s.isEnabled()) m.put(Keys.ENABLED, false);
+        m.put("message", s.getMessage().orElse(null));
+        return m;
     }
 }

@@ -3,12 +3,16 @@ package org.geoserver.mcp.tools.discovery;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.geoserver.mcp.McpToolTestSupport;
+import org.geoserver.platform.ModuleStatus;
 import org.junit.Test;
 
 public class DiscoveryToolsTest extends McpToolTestSupport {
@@ -48,6 +52,21 @@ public class DiscoveryToolsTest extends McpToolTestSupport {
             assertFalse(x.path("available").asBoolean(false));
             assertFalse(x.path("enabled").asBoolean(false));
         });
+    }
+
+    @Test
+    public void moduleShowsAvailableAndEnabledOnlyWhenFalse() {
+        ModuleStatus s = mock(ModuleStatus.class);
+        when(s.getModule()).thenReturn("gs-x");
+        when(s.getVersion()).thenReturn(Optional.empty());
+        when(s.getMessage()).thenReturn(Optional.of("missing native lib"));
+        Map<String, Object> off = DiscoveryTools.module(s);
+        assertEquals(false, off.get("available"));
+        assertEquals(false, off.get("enabled"));
+        when(s.isAvailable()).thenReturn(true);
+        when(s.isEnabled()).thenReturn(true);
+        Map<String, Object> on = DiscoveryTools.module(s);
+        assertFalse(on.containsKey("available") || on.containsKey("enabled"));
     }
 
     @Test

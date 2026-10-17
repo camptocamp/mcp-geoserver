@@ -61,7 +61,7 @@ public class StyleGeneratorTools {
                         .string("name", "Style name, default <layer>_<attribute>_<method>", false)
                         .string(Keys.WORKSPACE, "Workspace for the style; omit for a global style", false)
                         .bool("setDefault", "Also make it the layer's default style", false).build())
-                        .description("Generate a categorized or classified SLD from the layer's data, store it like gs_put_style and return the rules and SLD").build();
+                        .description("Generate a categorized or classified SLD from the layer's data, store it like gs_put_style and return the rules; the SLD only with verbose").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 return StyleGeneratorTools.this.call(ctx, args);
@@ -88,7 +88,7 @@ public class StyleGeneratorTools {
         Map<String, Object> out = new LinkedHashMap<>((Map<String, Object>) putStyle.call(ctx, new Args(putArgs)));
         if (args.bool("setDefault", false)) setDefault(ctx, layer, args.string(Keys.WORKSPACE, null), name);
         out.put("rules", rules.stream().map(r -> Map.of(Keys.TITLE, r.title(), "color", r.color())).toList());
-        out.put("sld", body);
+        if (ctx.verbose()) out.put("sld", body);
         return out;
     }
 

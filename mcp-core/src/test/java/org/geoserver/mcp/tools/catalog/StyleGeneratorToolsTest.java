@@ -1,6 +1,7 @@
 package org.geoserver.mcp.tools.catalog;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -12,7 +13,9 @@ import java.util.Map;
 import org.geoserver.catalog.StyleInfo;
 import org.geoserver.data.test.SystemTestData;
 import org.geoserver.mcp.McpToolTestSupport;
+import org.geoserver.mcp.tool.CommandTrace;
 import org.geoserver.mcp.tool.GsTool;
+import org.geoserver.mcp.tool.ToolContext;
 import org.geoserver.mcp.tool.ToolException;
 import org.junit.Test;
 
@@ -48,6 +51,15 @@ public class StyleGeneratorToolsTest extends McpToolTestSupport {
         StyleInfo style = getCatalog().getStyleByName("Zones_kind_categorized");
         assertEquals(style.getName(), getCatalog().getLayerByName("cite:Zones").getDefaultStyle().getName());
         assertTrue(r.get("sld").asText().contains("<ogc:Literal>water</ogc:Literal>"));
+    }
+
+    @Test
+    public void sldOnlyReturnedWhenVerbose() throws Exception {
+        ToolContext quiet = new ToolContext(false, new CommandTrace(), null, "");
+        Object out = runRaw(generate(), quiet, Map.of("layer", "cite:Zones", "attribute", "kind", "method", "categorized", "name", "quiet_kind"));
+        JsonNode r = json.valueToTree(out);
+        assertEquals(3, r.get("rules").size());
+        assertNull(r.get("sld"));
     }
 
     @Test

@@ -1,11 +1,13 @@
 # Tool catalogue
 
-Every tool also accepts `verbose: boolean` and declares MCP annotations (read-only, destructive, idempotent) from `ToolHints`.
+Every tool also accepts `verbose: boolean` (announced in the server instructions, not in each schema) and declares MCP annotations (read-only, destructive, idempotent) from `ToolHints`.
 
 How tools reach GeoServer:
 
 - Over HTTP (`GeoServerHttpClient`, caller's `Authorization` forwarded): `gs_get_map`, `gs_check_layer`, `gs_gwc_*`.
 - Everything else: in-process `Catalog` / `GeoServer` API, no HTTP call to GeoServer; the `curl` trace is only the REST equivalent.
+
+Results omit null fields. List rows also omit `enabled` / `available` when true, and `workspace` when the list is filtered by workspace.
 
 Read
 - `gs_status()`: versions, proxy base URL, counts
@@ -32,12 +34,12 @@ Write
 - `gs_put_style(name, workspace?, body, format?)`: format `sld` by default, `css`, `ysld`, `mbstyle` with their extension
 - `gs_create_layer_group(name, workspace?, title?, layers[], styles[]?, mode?)`
 - `gs_update_layer_group(name, workspace?, title?, abstract?, mode?, keywords[]?, add[]?, addStyles[]?, remove[]?, layers[]?, styles[]?)`: members may be layers or groups; `layers` replaces the list and excludes add/remove; a group cannot become empty
-- `gs_generate_style(layer, attribute, method, classes?, ramp?, name?, workspace?, setDefault?)`: method categorized (up to 50 values) or equalInterval, quantile, jenks (numeric, 2 to 20 classes); stored through gs_put_style; returns rules and the SLD
+- `gs_generate_style(layer, attribute, method, classes?, ramp?, name?, workspace?, setDefault?)`: method categorized (up to 50 values) or equalInterval, quantile, jenks (numeric, 2 to 20 classes); stored through gs_put_style; returns rules, plus the SLD in verbose mode
 - `gs_delete(kind, workspace?, name, recurse?)`
 - `gs_reload()`
 
 Data
-- `gs_query_features(layer, cql?, bbox[]?, properties[]?, maxFeatures?)` returns GeoJSON
+- `gs_query_features(layer, cql?, bbox[]?, properties[]?, maxFeatures?)` returns GeoJSON in EPSG:4326, default 20 features, stops at 40,000 chars; `returned` count and `truncated: true` when cut
 - `gs_get_map(layers[], bbox[], width, height, srs?, styles[]?, format?, transparent?)` returns an image
 
 GeoWebCache (via GWC REST over HTTP)
