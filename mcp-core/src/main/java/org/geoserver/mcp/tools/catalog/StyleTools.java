@@ -79,7 +79,12 @@ public class StyleTools {
                     styles = catalog.getStyles();
                 }
                 List<Map<String, Object>> out = new ArrayList<>();
-                for (StyleInfo s : styles) out.add(Views.style(s));
+                for (StyleInfo s : styles) {
+                    Map<String, Object> v = Views.style(s);
+                    v.remove("formatVersion");
+                    v.remove("filename");
+                    out.add(Views.listRow(v, args.has(Keys.WORKSPACE)));
+                }
                 return Map.of(Keys.STYLES, out);
             }
         };

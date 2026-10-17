@@ -106,7 +106,7 @@ public class DiscoveryTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_list_modules", Schema.object().build())
-                        .description("Installed GeoServer modules, extensions and community modules with availability").build();
+                        .description("Installed GeoServer modules, extensions and community modules; available and enabled appear only when false").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 List<Map<String, Object>> out = new ArrayList<>();
@@ -116,8 +116,8 @@ public class DiscoveryTools {
                     m.put(Keys.TITLE, s.getName());
                     m.put("version", s.getVersion().orElse(null));
                     m.put("category", String.valueOf(s.getCategory()));
-                    m.put("available", s.isAvailable());
-                    m.put(Keys.ENABLED, s.isEnabled());
+                    if (!s.isAvailable()) m.put("available", false);
+                    if (!s.isEnabled()) m.put(Keys.ENABLED, false);
                     m.put("message", s.getMessage().orElse(null));
                     out.add(m);
                 }

@@ -1,5 +1,6 @@
 package org.geoserver.mcp.tool;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -23,9 +24,10 @@ public final class ToolAdapter {
 
     public static McpStatelessServerFeatures.SyncToolSpecification spec(GsTool tool, McpSettingsStore settings, ObjectMapper json) {
         McpSchema.Tool def = withVerbose(tool.definition());
+        ObjectMapper out = json.copy().setDefaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL));
         return McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(def)
-                .callHandler((McpTransportContext tctx, McpSchema.CallToolRequest req) -> invoke(tool, settings, json, tctx, req))
+                .callHandler((McpTransportContext tctx, McpSchema.CallToolRequest req) -> invoke(tool, settings, out, tctx, req))
                 .build();
     }
 

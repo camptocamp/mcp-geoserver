@@ -6,7 +6,7 @@ public record McpSettings(boolean enabled, List<String> allowedRoles, boolean ve
         boolean readOnly, int maxListResults, int maxFeatures) {
 
     public static final String ADMIN_ROLE = "ROLE_ADMINISTRATOR";
-    public static final int DEFAULT_MAX_LIST_RESULTS = 500;
+    public static final int DEFAULT_MAX_LIST_RESULTS = 100;
     public static final int DEFAULT_MAX_FEATURES = 10000;
     public static final McpSettings DEFAULTS = new McpSettings(false, List.of(ADMIN_ROLE), false, "");
 

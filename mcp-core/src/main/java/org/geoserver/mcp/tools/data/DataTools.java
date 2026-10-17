@@ -27,6 +27,7 @@ import org.geotools.api.filter.Filter;
 import org.geotools.api.filter.FilterFactory;
 import org.geotools.data.geojson.GeoJSONWriter;
 import org.geotools.data.simple.SimpleFeatureCollection;
+import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.filter.text.cql2.CQLException;
 import org.geotools.filter.text.ecql.ECQL;
@@ -40,6 +41,7 @@ public class DataTools {
     private static final int MAX_IMAGE_DIMENSION = 8192;
     private static final String BAD_BBOX = "bbox needs exactly 4 numbers";
     private static final String BBOX_PARAM = "&BBOX=";
+    static final int MAX_GEOJSON_CHARS = 40_000;
 
     private final Catalog catalog;
     private final GeoServerHttpClient http;
@@ -61,15 +63,16 @@ public class DataTools {
                         .string("cql", "ECQL filter, e.g. NAME = 'Blue Lake' or POPULATION > 1000", false)
                         .numberArray("bbox", "minx, miny, maxx, maxy in the layer's declared SRS", false)
                         .stringArray("properties", "Attributes to return; omit for all", false)
-                        .integer("maxFeatures", "Maximum features, default 100, capped by the server maxFeatures setting", false).build())
-                        .description("Query a vector layer in process and return GeoJSON").build();
+                        .integer("maxFeatures", "Maximum features, default 20, capped by the server maxFeatures setting", false).build())
+                        .description("Query a vector layer in process and return GeoJSON in EPSG:4326 (lon/lat). "
+                                + "Output stops at maxFeatures or " + MAX_GEOJSON_CHARS + " chars; returned counts features, truncated:true means more matched").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 LayerInfo layer = Lookups.layer(catalog, args.string(Keys.LAYER));
                 if (!(layer.getResource() instanceof FeatureTypeInfo ft)) {
                     throw new ToolException(layerMessage(layer, "is not a vector layer"));
                 }
-                int max = Math.max(1, Math.min(ctx.settings().maxFeatures(), args.integer("maxFeatures", 100)));
+                int max = Math.max(1, Math.min(ctx.settings().maxFeatures(), args.integer("maxFeatures", 20)));
                 FilterFactory ff = CommonFactoryFinder.getFilterFactory();
                 List<Double> bbox = args.numbers("bbox");
                 List<String> props = args.strings("properties");
@@ -78,15 +81,35 @@ public class DataTools {
 
                 FeatureSource<?, ?> fs = ft.getFeatureSource(null, null);
                 Query query = new Query(fs.getSchema().getName().getLocalPart(), filter);
-                query.setMaxFeatures(max);
+                query.setMaxFeatures(max + 1);
                 if (!props.isEmpty()) query.setPropertyNames(props);
                 Object fc = fs.getFeatures(query);
                 if (!(fc instanceof SimpleFeatureCollection sfc)) {
                     throw new ToolException(layerMessage(layer, "is not a simple feature layer; use WFS directly"));
                 }
-                return new Payloads.RawJson(GeoJSONWriter.toGeoJSON(sfc));
+                return new Payloads.RawJson(featureCollection(sfc, max, MAX_GEOJSON_CHARS));
             }
         };
+    }
+
+    static String featureCollection(SimpleFeatureCollection sfc, int max, int budget) {
+        StringBuilder sb = new StringBuilder("{\"type\":\"FeatureCollection\",\"features\":[");
+        int returned = 0;
+        boolean truncated = false;
+        try (SimpleFeatureIterator it = sfc.features()) {
+            while (it.hasNext() && !truncated) {
+                String feature = GeoJSONWriter.toGeoJSON(it.next());
+                truncated = returned == max || sb.length() + feature.length() > budget;
+                if (!truncated) {
+                    if (returned > 0) sb.append(',');
+                    sb.append(feature);
+                    returned++;
+                }
+            }
+        }
+        sb.append("],\"returned\":").append(returned);
+        if (truncated) sb.append(",\"truncated\":true");
+        return sb.append('}').toString();
     }
 
     static Filter cqlFilter(Args args, FilterFactory ff) {

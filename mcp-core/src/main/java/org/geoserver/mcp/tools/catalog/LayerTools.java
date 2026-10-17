@@ -50,7 +50,7 @@ public class LayerTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_list_layers", Schema.object().string(Keys.WORKSPACE, "Restrict to this workspace", false).build())
-                        .description("List published layers as workspace:name with type and title").build();
+                        .description("List published layers as workspace:name with type and title; enabled appears only when false").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 String ws = args.string(Keys.WORKSPACE, null);
@@ -59,7 +59,7 @@ public class LayerTools {
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (LayerInfo l : catalog.getLayers()) {
                     String lws = l.getResource().getStore().getWorkspace().getName();
-                    if (ws == null || ws.equals(lws)) out.add(Views.layerSummary(l));
+                    if (ws == null || ws.equals(lws)) out.add(Views.listRow(Views.layerSummary(l), false));
                 }
                 return Map.of(Keys.LAYERS, out);
             }

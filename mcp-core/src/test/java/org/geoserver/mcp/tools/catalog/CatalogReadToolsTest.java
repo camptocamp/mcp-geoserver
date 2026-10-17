@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.geoserver.catalog.Catalog;
+import org.geoserver.catalog.LayerInfo;
 import org.geoserver.catalog.CatalogBuilder;
 import org.geoserver.catalog.DataStoreInfo;
 import org.geoserver.catalog.LayerGroupInfo;
@@ -57,7 +58,12 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
     public void listStoresFilteredByWorkspace() throws Exception {
         JsonNode r = run(tool(new StoreTools(getCatalog()).tools(), "gs_list_stores"), Map.of("workspace", "wcs"));
         assertTrue(names(r.get("stores"), "name").contains("BlueMarble"));
-        r.get("stores").forEach(s -> assertEquals("wcs", s.get("workspace").asText()));
+        r.get("stores").forEach(s -> {
+            assertNull(s.get("workspace"));
+            assertNull(s.get("enabled"));
+        });
+        JsonNode all = run(tool(new StoreTools(getCatalog()).tools(), "gs_list_stores"), Map.of());
+        all.get("stores").forEach(s -> assertTrue(s.has("workspace")));
     }
 
     @Test
@@ -79,6 +85,17 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
     public void listLayers() throws Exception {
         JsonNode r = run(tool(new LayerTools(getCatalog()).tools(), "gs_list_layers"), Map.of("workspace", "cite"));
         assertTrue(names(r.get("layers"), "name").contains("cite:BasicPolygons"));
+        r.get("layers").forEach(l -> assertNull(l.get("enabled")));
+        LayerInfo lakes = getCatalog().getLayerByName("cite:Lakes");
+        lakes.setEnabled(false);
+        getCatalog().save(lakes);
+        try {
+            JsonNode off = run(tool(new LayerTools(getCatalog()).tools(), "gs_list_layers"), Map.of("workspace", "cite"));
+            off.get("layers").forEach(l -> assertEquals("cite:Lakes".equals(l.get("name").asText()), l.has("enabled")));
+        } finally {
+            lakes.setEnabled(true);
+            getCatalog().save(lakes);
+        }
     }
 
     @Test
@@ -111,6 +128,7 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
         var tools = new StyleTools(getCatalog()).tools();
         JsonNode list = run(tool(tools, "gs_list_styles"), Map.of());
         assertTrue(names(list.get("styles"), "name").contains("polygon"));
+        list.get("styles").forEach(st -> assertFalse(st.has("filename") || st.has("formatVersion")));
         JsonNode s = run(tool(tools, "gs_get_style"), Map.of("name", "polygon"));
         assertTrue(s.get("body").asText().contains("StyledLayerDescriptor"));
     }
@@ -120,6 +138,7 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
         var tools = new LayerGroupTools(getCatalog()).tools();
         JsonNode list = run(tool(tools, "gs_list_layer_groups"), Map.of());
         assertTrue(names(list.get("layerGroups"), "name").contains("basic-group"));
+        list.get("layerGroups").forEach(lg -> assertNull(lg.get("bounds")));
         JsonNode g = run(tool(tools, "gs_get_layer_group"), Map.of("name", "basic-group"));
         assertEquals("cite:BasicPolygons", g.get("layers").get(0).get("name").asText());
     }

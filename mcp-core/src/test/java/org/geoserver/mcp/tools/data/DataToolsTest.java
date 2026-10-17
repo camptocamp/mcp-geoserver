@@ -50,6 +50,27 @@ public class DataToolsTest extends McpToolTestSupport {
     }
 
     @Test
+    public void queryFeaturesFlagsTruncationAtMaxFeatures() throws Exception {
+        var t = tool(tools("").tools(), "gs_query_features");
+        JsonNode cut = json.readTree(((Payloads.RawJson) runRaw(t, ctx(), Map.of("layer", "cite:Buildings", "maxFeatures", 1))).json());
+        assertEquals(1, cut.get("features").size());
+        assertEquals(1, cut.get("returned").asInt());
+        assertTrue(cut.get("truncated").asBoolean());
+        JsonNode all = json.readTree(((Payloads.RawJson) runRaw(t, ctx(), Map.of("layer", "cite:Buildings"))).json());
+        assertEquals(2, all.get("returned").asInt());
+        assertNull(all.get("truncated"));
+    }
+
+    @Test
+    public void queryFeaturesStopsAtCharBudget() throws Exception {
+        var fc = (org.geotools.data.simple.SimpleFeatureCollection) getCatalog().getFeatureTypeByName("cite:Buildings").getFeatureSource(null, null).getFeatures();
+        JsonNode out = json.readTree(DataTools.featureCollection(fc, 20, 60));
+        assertEquals(0, out.get("features").size());
+        assertEquals(0, out.get("returned").asInt());
+        assertTrue(out.get("truncated").asBoolean());
+    }
+
+    @Test
     public void queryFeaturesAppliesCqlAndProperties() throws Exception {
         Object out = runRaw(tool(tools("").tools(), "gs_query_features"), ctx(), Map.of(
                 "layer", "Lakes", "cql", "NAME = 'Blue Lake'", "properties", List.of("NAME")));

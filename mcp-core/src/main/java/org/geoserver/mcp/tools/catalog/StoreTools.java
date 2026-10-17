@@ -46,7 +46,7 @@ public class StoreTools {
         return new GsTool() {
             public McpSchema.Tool definition() {
                 return McpSchema.Tool.builder("gs_list_stores", Schema.object().string(Keys.WORKSPACE, "Restrict to this workspace", false).build())
-                        .description("List vector, raster, WMS and WMTS stores").build();
+                        .description("List vector, raster, WMS and WMTS stores; enabled appears only when false").build();
             }
             public Object call(ToolContext ctx, Args args) {
                 List<StoreInfo> stores;
@@ -66,7 +66,7 @@ public class StoreTools {
                 for (StoreInfo s : stores) {
                     Map<String, Object> v = Views.store(s);
                     v.remove("connectionParameters");
-                    out.add(v);
+                    out.add(Views.listRow(v, args.has(Keys.WORKSPACE)));
                 }
                 return Map.of("stores", out);
             }

@@ -64,7 +64,8 @@ public class LayerGroupTools {
                     Map<String, Object> v = Views.layerGroup(g);
                     v.put("layerCount", g.getLayers().size());
                     v.remove(Keys.LAYERS);
-                    out.add(v);
+                    v.remove("bounds");
+                    out.add(Views.listRow(v, args.has(Keys.WORKSPACE)));
                 }
                 return Map.of("layerGroups", out);
             }

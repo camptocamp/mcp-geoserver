@@ -1,6 +1,7 @@
 package org.geoserver.mcp.tools.discovery;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,7 +43,11 @@ public class DiscoveryToolsTest extends McpToolTestSupport {
         JsonNode r = run(tool(new DiscoveryTools().tools(), "gs_list_modules"), Map.of());
         assertTrue(names(r.get("modules")).stream().anyMatch(n -> n.startsWith("gs-main")));
         JsonNode m = r.get("modules").get(0);
-        assertTrue(m.has("available") && m.has("enabled") && m.has("category"));
+        assertTrue(m.has("category"));
+        r.get("modules").forEach(x -> {
+            assertFalse(x.path("available").asBoolean(false));
+            assertFalse(x.path("enabled").asBoolean(false));
+        });
     }
 
     @Test

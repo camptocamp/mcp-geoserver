@@ -69,6 +69,24 @@ class ToolAdapterTest {
     }
 
     @Test
+    void nullFieldsAreOmitted() {
+        GsTool nulls = new GsTool() {
+            public McpSchema.Tool definition() {
+                return McpSchema.Tool.builder("gs_nulls", Schema.object().build()).description("Nulls").build();
+            }
+            public Object call(ToolContext ctx, Args args) {
+                Map<String, Object> m = new java.util.LinkedHashMap<>();
+                m.put("a", 1);
+                m.put("b", null);
+                m.put("c", List.of(java.util.Collections.singletonMap("d", null)));
+                return m;
+            }
+        };
+        McpSchema.CallToolResult r = call(nulls, false, Map.of());
+        assertEquals("{\"a\":1,\"c\":[{}]}", ((McpSchema.TextContent) r.content().get(0)).text());
+    }
+
+    @Test
     void verboseSettingAppendsEquivalentCommands() {
         McpSchema.CallToolResult r = call(echo, true, Map.of("text", "hi"));
         assertEquals(2, r.content().size());
