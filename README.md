@@ -116,7 +116,7 @@ When verbose is on, every tool result carries a second block titled `Equivalent 
 
 ## Tools
 
-All tools are prefixed `gs_` and accept an optional `verbose` boolean. `AGENTS.md` lists every tool with its arguments.
+All tools are prefixed `gs_` and accept an optional `verbose` boolean. `docs/agents/tools.md` lists every tool with its arguments.
 
 Read
 - `gs_status`: versions, proxy base URL, counts
