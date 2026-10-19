@@ -72,7 +72,7 @@ test: ## Maven unit tests
 it: ## Maven integration tests (mcp-it, needs Docker)
 	./mvnw -q clean verify -Pit
 
-scenarios: start ## Three model-driven MCP scenarios (MODEL=, BUDGET_EUR= cap per scenario, EUR_PER_USD= rate; needs make build once)
+scenarios: start ## Four model-driven MCP scenarios (MODEL=, BUDGET_EUR= cap per scenario, EUR_PER_USD= rate; needs make build once)
 	./scripts/scenarios.sh
 
 clean: ## Maven clean
