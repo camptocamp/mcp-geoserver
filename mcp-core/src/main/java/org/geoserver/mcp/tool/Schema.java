@@ -7,6 +7,8 @@ import java.util.Map;
 
 public final class Schema {
     private static final String STRING = "string";
+    private static final String ARRAY = "array";
+    private static final String ITEMS = "items";
 
     private final Map<String, Object> properties = new LinkedHashMap<>();
     private final List<String> required = new ArrayList<>();
@@ -30,17 +32,17 @@ public final class Schema {
     }
 
     public Schema stringArray(String name, String description, boolean req) {
-        return add(name, prop("array", description, "items", Map.of("type", STRING)), req);
+        return add(name, prop(ARRAY, description, ITEMS, Map.of("type", STRING)), req);
     }
 
     public Schema numberArray(String name, String description, boolean req) {
-        return add(name, prop("array", description, "items", Map.of("type", "number")), req);
+        return add(name, prop(ARRAY, description, ITEMS, Map.of("type", "number")), req);
     }
 
     public Schema boolOrStringArray(String name, String description, boolean req) {
         Map<String, Object> p = new LinkedHashMap<>();
-        p.put("type", List.of("boolean", "array"));
-        p.put("items", Map.of("type", STRING));
+        p.put("type", List.of("boolean", ARRAY));
+        p.put(ITEMS, Map.of("type", STRING));
         if (description != null) p.put(Keys.DESCRIPTION, description);
         return add(name, p, req);
     }
