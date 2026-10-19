@@ -30,15 +30,15 @@ check_style() { rest "$GS_URL/rest/layers/$WS:states.json" | jq -e '.layer.defau
 check_group() { rest "$GS_URL/rest/workspaces/$WS/layergroups/base.json" | jq -e '.layerGroup.publishables' >/dev/null; }
 
 scenarios=(
-  "publish|Publish the US states shapefile at file:data/shapefiles/states.shp as a layer named states, in a new workspace $WS."
-  "style|Style layer $WS:states as a choropleth on the PERSONS attribute with 5 classes and make it the layer's default style."
-  "group|Create a layer group named base in workspace $WS that contains the layer $WS:states."
+  "publish|layer|Publish the US states shapefile at file:data/shapefiles/states.shp as a layer named states, in a new workspace $WS."
+  "style|style|Style layer $WS:states as a choropleth on the PERSONS attribute with 5 classes and make it the layer's default style."
+  "group|layer group|Create a layer group named base in workspace $WS that contains the layer $WS:states."
 )
 
 failed=0
-printf '%-8s %-5s %6s %9s %8s\n' scenario ok turns tokens eur
+printf '%-8s %-5s %6s %9s %8s  %s\n' scenario ok turns tokens eur per
 for s in "${scenarios[@]}"; do
-  name=${s%%|*} prompt=${s#*|}
+  IFS='|' read -r name unit prompt <<<"$s"
   # --tools "" removes Bash/WebFetch: otherwise the model can curl REST and pass without using MCP.
   out=$(cd "$work" && claude -p "$prompt" --output-format json --model "$MODEL" \
     ${ANTHROPIC_API_KEY:+--bare} --setting-sources "" --tools "" \
@@ -46,8 +46,8 @@ for s in "${scenarios[@]}"; do
     --max-budget-usd "$(awk -v e="$BUDGET_EUR" -v r="$EUR_PER_USD" 'BEGIN{print e/r}')" 2>/dev/null) || out={}
   ok=no
   "check_$name" && ok=yes || failed=1
-  jq -r --arg n "$name" --arg ok "$ok" --argjson r "$EUR_PER_USD" \
-    '[$n, $ok, (.num_turns // 0), ((.usage.input_tokens // 0) + (.usage.cache_read_input_tokens // 0) + (.usage.cache_creation_input_tokens // 0) + (.usage.output_tokens // 0)), ((.total_cost_usd // 0) * $r)] | @tsv' \
-    <<<"$out" | awk -F'\t' '{printf "%-8s %-5s %6s %9s %8.4f\n",$1,$2,$3,$4,$5}'
+  jq -r --arg n "$name" --arg ok "$ok" --arg u "$unit" --argjson r "$EUR_PER_USD" \
+    '[$n, $ok, (.num_turns // 0), ((.usage.input_tokens // 0) + (.usage.cache_read_input_tokens // 0) + (.usage.cache_creation_input_tokens // 0) + (.usage.output_tokens // 0)), ((.total_cost_usd // 0) * $r), $u] | @tsv' \
+    <<<"$out" | awk -F'\t' '{printf "%-8s %-5s %6s %9s %8.4f  %s\n",$1,$2,$3,$4,$5,$6}'
 done
 exit $failed
