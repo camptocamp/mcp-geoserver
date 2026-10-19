@@ -2,6 +2,7 @@ package org.geoserver.mcp.tools.discovery;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -12,10 +13,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.geoserver.mcp.McpToolTestSupport;
+import org.geoserver.mcp.tool.ToolException;
 import org.geoserver.platform.ModuleStatus;
 import org.junit.Test;
 
 public class DiscoveryToolsTest extends McpToolTestSupport {
+
+    static final int MAX_DEFAULT_CHARS = 3_000;
+
+    JsonNode entry(JsonNode array, String name) {
+        for (JsonNode n : array) if (n.get("name").asText().equals(name)) return n;
+        throw new AssertionError("no entry " + name);
+    }
 
     List<String> names(JsonNode array) {
         List<String> out = new ArrayList<>();
@@ -24,15 +33,37 @@ public class DiscoveryToolsTest extends McpToolTestSupport {
     }
 
     @Test
-    public void storeTypesIncludeShapefileAndGeoTiff() throws Exception {
+    public void storeTypesListNamesAndRequiredKeysOnly() throws Exception {
         JsonNode r = run(tool(new DiscoveryTools().tools(), "gs_list_store_types"), Map.of());
         assertTrue(names(r.get("vector")).contains("Shapefile"));
         assertTrue(names(r.get("raster")).contains("GeoTIFF"));
-        JsonNode shp = null;
-        for (JsonNode n : r.get("vector")) if (n.get("name").asText().equals("Shapefile")) shp = n;
-        assertTrue(shp.get("parameters").size() > 0);
-        JsonNode p = shp.get("parameters").get(0);
-        assertTrue(p.has("key") && p.has("type") && p.has("required"));
+        for (JsonNode n : r.get("vector")) assertFalse(n.has("parameters"));
+        assertEquals("[\"url\"]", entry(r.get("vector"), "Shapefile").get("required").toString());
+        assertEquals("[\"url\"]", entry(r.get("raster"), "GeoTIFF").get("required").toString());
+        assertTrue(r.toString().length() < MAX_DEFAULT_CHARS);
+    }
+
+    @Test
+    public void storeTypeDetailListsEveryParameterWithoutLongSamples() throws Exception {
+        JsonNode r = run(tool(new DiscoveryTools().tools(), "gs_list_store_types"), Map.of("type", "shapefile"));
+        assertEquals(1, r.get("vector").size());
+        assertEquals(0, r.get("raster").size());
+        JsonNode shp = r.get("vector").get(0);
+        assertTrue(shp.get("parameters").size() > 1);
+        for (JsonNode p : shp.get("parameters")) {
+            assertTrue(p.has("key") && p.has("required"));
+            assertFalse(p.has("type"));
+            assertFalse(p.path("sample").asText("").length() > 40);
+        }
+        JsonNode tiff = run(tool(new DiscoveryTools().tools(), "gs_list_store_types"), Map.of("type", "GeoTIFF"));
+        assertEquals("url", tiff.get("raster").get(0).get("parameters").get(0).get("key").asText());
+    }
+
+    @Test
+    public void storeTypeDetailRejectsUnknownType() {
+        ToolException e = assertThrows(ToolException.class,
+                () -> run(tool(new DiscoveryTools().tools(), "gs_list_store_types"), Map.of("type", "nope")));
+        assertTrue(e.getMessage().contains("nope"));
     }
 
     @Test

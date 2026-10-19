@@ -20,7 +20,7 @@ Read
 - `gs_list_layer_groups(workspace?)`, `gs_get_layer_group(name, workspace?)`
 
 Discovery
-- `gs_list_store_types(kind?)`: runtime list from GeoTools, vector with parameter descriptors, raster with url
+- `gs_list_store_types(kind?, type?)`: runtime list from GeoTools, names with required parameter keys; `type` returns every parameter of that one type
 - `gs_list_modules()`: ModuleStatus beans
 
 Write

@@ -127,7 +127,7 @@ Read
 - `gs_list_layer_groups`, `gs_get_layer_group`
 
 Discovery
-- `gs_list_store_types`: runtime list from GeoTools, vector with parameter descriptors, raster with url
+- `gs_list_store_types`: runtime list from GeoTools, names with required parameter keys; `type` returns every parameter of one type
 - `gs_list_modules`: installed GeoServer modules
 
 Write
