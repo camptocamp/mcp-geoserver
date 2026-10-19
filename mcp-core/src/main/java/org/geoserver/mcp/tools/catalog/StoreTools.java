@@ -163,8 +163,8 @@ public class StoreTools {
                 return McpSchema.Tool.builder("gs_create_store", Schema.object()
                         .string(Keys.WORKSPACE, null, true)
                         .string("name", null, true)
-                        .string("type", "Store type name from gs_list_store_types, e.g. Shapefile, PostGIS, GeoTIFF, GeoPackage", true)
-                        .map("params", "Connection parameters. Vector: keys from gs_list_store_types. Raster: {\"url\": ...}; a GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true).build())
+                        .string("type", "Shapefile, Directory of spatial files (shapefiles), PostGIS, GeoPackage, GeoTIFF, ImageMosaic, or another name from gs_list_store_types", true)
+                        .map("params", "Shapefile, Directory, raster: {url}. PostGIS: {dbtype: postgis, host, port, user, passwd, database, schema}. GeoPackage: {dbtype: geopkg, database}. Other vector types: keys from gs_list_store_types. A GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true).build())
                         .description("Create a vector or raster store; type is matched at runtime against installed GeoTools plugins").build();
             }
             public Object call(ToolContext ctx, Args args) {
