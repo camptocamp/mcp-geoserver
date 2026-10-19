@@ -37,6 +37,14 @@ public final class Schema {
         return add(name, prop("array", description, "items", Map.of("type", "number")), req);
     }
 
+    public Schema boolOrStringArray(String name, String description, boolean req) {
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("type", List.of("boolean", "array"));
+        p.put("items", Map.of("type", STRING));
+        if (description != null) p.put(Keys.DESCRIPTION, description);
+        return add(name, p, req);
+    }
+
     public Schema map(String name, String description, boolean req) {
         return add(name, prop("object", description, "additionalProperties", true), req);
     }

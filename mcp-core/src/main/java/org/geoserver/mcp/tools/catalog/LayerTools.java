@@ -99,7 +99,7 @@ public class LayerTools {
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string(Keys.STORE));
                 if (store instanceof DataStoreInfo ds) {
                     String nativeName = args.has(Keys.NATIVE_NAME) ? args.string(Keys.NATIVE_NAME) : onlyFeatureType(ds);
-                    return publishVector(ctx, ds, new VectorRequest(nativeName, args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null));
+                    return withBulkHint(publishVector(ctx, ds, new VectorRequest(nativeName, args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null)), ds);
                 }
                 if (!(store instanceof CoverageStoreInfo)) {
                     throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
@@ -129,6 +129,25 @@ public class LayerTools {
         catalog.add(ci);
         catalog.add(layer);
         return Views.published(catalog.getLayerByName(ws.getName() + ":" + ci.getName()), true, List.of());
+    }
+
+    Map<String, Object> withBulkHint(Map<String, Object> published, DataStoreInfo ds) throws IOException {
+        int others = StoreTools.available(catalog, ds).size();
+        if (others > 0) published.put("hint", others + " other tables in this store are unpublished; gs_publish_layers publishes several in one call");
+        return published;
+    }
+
+    Object publishFromStore(ToolContext ctx, StoreInfo store, Args args) throws Exception {
+        if (!(store instanceof DataStoreInfo ds)) return List.of(publishCoverage(ctx, store.getWorkspace(), store, new Args(Map.of())));
+        boolean listed = args.isList(Keys.PUBLISH);
+        List<String> names = listed ? args.strings(Keys.PUBLISH) : StoreTools.available(catalog, ds);
+        if (!listed && names.size() != 1) {
+            return Map.of(SKIPPED, names.size() + " unpublished tables; pass publish: [names] or call gs_publish_layers");
+        }
+        if (names.size() > MAX_BULK) return Map.of(SKIPPED, names.size() + " names; at most " + MAX_BULK + " per call");
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (String name : names) items.add(publishItem(ctx, ds, name, false));
+        return items;
     }
 
     static final int MAX_BULK = 50;

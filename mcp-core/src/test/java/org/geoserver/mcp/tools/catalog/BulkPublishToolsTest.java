@@ -196,4 +196,64 @@ public class BulkPublishToolsTest extends McpToolTestSupport {
         notJdbc.put("geometryType", "Point");
         assertTrue(assertThrows(ToolException.class, () -> run(t, notJdbc)).getMessage().contains("not a JDBC store"));
     }
+
+    JsonNode createWithPublish(String name, Map<String, String> files, Object publish) throws Exception {
+        File dir = new File(getTestData().getDataDirectoryRoot(), "data/" + name);
+        dir.mkdirs();
+        for (var e : files.entrySet()) {
+            Files.writeString(new File(dir, e.getKey() + ".properties").toPath(), e.getValue(), StandardCharsets.UTF_8);
+        }
+        return run(tool(new StoreTools(getCatalog()).tools(), "gs_create_store"), Map.of(
+                "workspace", "cite", "name", name, "type", "Properties", "params", Map.of("directory", dir.getAbsolutePath()), "publish", publish));
+    }
+
+    @Test
+    public void createStoreWithPublishTruePublishesTheOnlyLayer() throws Exception {
+        JsonNode r = createWithPublish("pubone", Map.of("POne", POLY), true);
+        assertTrue(r.get("layers").get(0).get("created").asBoolean());
+        assertNotNull(getCatalog().getLayerByName("cite:POne"));
+    }
+
+    @Test
+    public void createStoreWithPublishTrueSkipsMultiTableStores() throws Exception {
+        JsonNode r = createWithPublish("pubmany", Map.of("PmA", POLY, "PmB", POLY), true);
+        assertTrue(r.get("created").asBoolean());
+        assertTrue(r.get("layers").get("skipped").asText().startsWith("2 unpublished tables"));
+        assertNull(getCatalog().getLayerByName("cite:PmA"));
+    }
+
+    @Test
+    public void createStoreWithPublishListPublishesThoseTables() throws Exception {
+        JsonNode r = createWithPublish("publist", Map.of("PlA", POLY, "PlB", POLY, "PlC", POLY), List.of("PlA", "PlB"));
+        assertEquals(2, r.get("layers").size());
+        assertNotNull(getCatalog().getLayerByName("cite:PlA"));
+        assertNotNull(getCatalog().getLayerByName("cite:PlB"));
+        assertNull(getCatalog().getLayerByName("cite:PlC"));
+    }
+
+    @Test
+    public void createStoreRefusesMoreThanTheBulkCap() throws Exception {
+        List<String> names = new ArrayList<>();
+        for (int i = 0; i <= LayerTools.MAX_BULK; i++) names.add("t" + i);
+        JsonNode r = createWithPublish("pubcap", Map.of("PcA", POLY), names);
+        assertTrue(r.get("layers").get("skipped").asText().contains("at most " + LayerTools.MAX_BULK));
+    }
+
+    @Test
+    public void createStoreWithPublishFalsePublishesNothing() throws Exception {
+        JsonNode r = createWithPublish("pubnone", Map.of("PnA", POLY), false);
+        assertNull(r.get("layers"));
+        assertNull(getCatalog().getLayerByName("cite:PnA"));
+    }
+
+    @Test
+    public void publishLayerHintsAtOtherUnpublishedTables() throws Exception {
+        store("hinted", Map.of("HA", POLY, "HB", POLY));
+        JsonNode r = run(tool(new LayerTools(getCatalog()).tools(), "gs_publish_layer"),
+                Map.of("workspace", "cite", "store", "hinted", "nativeName", "HA"));
+        assertTrue(r.get("hint").asText().startsWith("1 other tables"));
+        JsonNode last = run(tool(new LayerTools(getCatalog()).tools(), "gs_publish_layer"),
+                Map.of("workspace", "cite", "store", "hinted", "nativeName", "HB"));
+        assertNull(last.get("hint"));
+    }
 }

@@ -16,6 +16,10 @@ public final class Args {
         return raw.get(key) != null;
     }
 
+    public boolean isList(String key) {
+        return raw.get(key) instanceof Collection<?>;
+    }
+
     public String string(String key) {
         Object v = raw.get(key);
         if (v == null || v.toString().isBlank()) throw new ToolException("Missing required argument '" + key + "'");

@@ -164,27 +164,37 @@ public class StoreTools {
                         .string(Keys.WORKSPACE, null, true)
                         .string("name", null, true)
                         .string("type", "Shapefile, Directory of spatial files (shapefiles), PostGIS, GeoPackage, GeoTIFF, ImageMosaic, or another name from gs_list_store_types", true)
-                        .map("params", "Shapefile, Directory, raster: {url}. PostGIS: {dbtype: postgis, host, port, user, passwd, database, schema}. GeoPackage: {dbtype: geopkg, database}. Other vector types: keys from gs_list_store_types. A GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true).build())
+                        .map("params", "Shapefile, Directory, raster: {url}. PostGIS: {dbtype: postgis, host, port, user, passwd, database, schema}. GeoPackage: {dbtype: geopkg, database}. Other vector types: keys from gs_list_store_types. A GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true)
+                        .boolOrStringArray(Keys.PUBLISH, "true: also publish the store's only layer; [names]: publish those tables, at most " + LayerTools.MAX_BULK, false).build())
                         .description("Create a vector or raster store; type is matched at runtime against installed GeoTools plugins").build();
             }
-            public Object call(ToolContext ctx, Args args) {
+            public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
                 String name = args.string("name");
                 String type = args.string("type");
                 Map<String, Object> params = args.map("params");
                 StoreInfo existing = catalog.getStoreByName(ws, name, StoreInfo.class);
+                Map<String, Object> m;
                 if (existing != null) {
-                    Map<String, Object> m = Views.store(existing);
+                    m = Views.store(existing);
                     m.put(Keys.CREATED, false);
-                    return m;
+                } else {
+                    m = createStore(ctx, ws, name, type, params);
                 }
-                var vector = DiscoveryTools.vectorFactory(type);
-                if (vector.isPresent()) return createVector(ctx, ws, name, type, vector.get(), params);
-                var raster = DiscoveryTools.rasterFormat(type);
-                if (raster.isPresent()) return createRaster(ctx, ws, name, raster.get(), params);
-                throw new ToolException("Unknown store type '" + type + "'. Call gs_list_store_types for the names available on this server.");
+                if (args.isList(Keys.PUBLISH) || args.bool(Keys.PUBLISH, false)) {
+                    m.put("layers", new LayerTools(catalog).publishFromStore(ctx, catalog.getStoreByName(ws, name, StoreInfo.class), args));
+                }
+                return m;
             }
         };
+    }
+
+    Map<String, Object> createStore(ToolContext ctx, WorkspaceInfo ws, String name, String type, Map<String, Object> params) {
+        var vector = DiscoveryTools.vectorFactory(type);
+        if (vector.isPresent()) return createVector(ctx, ws, name, type, vector.get(), params);
+        var raster = DiscoveryTools.rasterFormat(type);
+        if (raster.isPresent()) return createRaster(ctx, ws, name, raster.get(), params);
+        throw new ToolException("Unknown store type '" + type + "'. Call gs_list_store_types for the names available on this server.");
     }
 
     Map<String, Object> createVector(ToolContext ctx, WorkspaceInfo ws, String name, String type, DataAccessFactory factory, Map<String, Object> params) {
