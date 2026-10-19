@@ -43,6 +43,10 @@ public class DataTools {
     private static final String BBOX_PARAM = "&BBOX=";
     static final int MAX_GEOJSON_CHARS = 40_000;
 
+    private static final String PAINTED_RATIO = "paintedRatio";
+    private static final String SERVICE_EXCEPTION = "serviceException";
+    private static final String ERROR = "error";
+
     private final Catalog catalog;
     private final GeoServerHttpClient http;
 
@@ -200,35 +204,56 @@ public class DataTools {
                 } else if (bbox.size() != 4) {
                     throw new ToolException(BAD_BBOX);
                 }
-                int width = dimension(args, WIDTH, 256);
-                int height = dimension(args, HEIGHT, 256);
-                String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + enc(layer.prefixedName()) + "&STYLES="
-                        + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
-                        + "&SRS=EPSG:4326&WIDTH=" + width + "&HEIGHT=" + height
-                        + "&FORMAT=" + enc("image/png") + "&TRANSPARENT=true&EXCEPTIONS=" + enc("application/vnd.ogc.se_xml");
-                long start = System.nanoTime();
-                GeoServerHttpClient.Response r = http.get(ctx, path);
-                long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-                String contentType = r.contentType().split(";")[0].trim();
-                BufferedImage img = r.status() == 200 && contentType.startsWith(IMAGE_PREFIX) ? ImageIO.read(new ByteArrayInputStream(r.body())) : null;
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("ok", img != null);
-                m.put(Keys.LAYER, layer.prefixedName());
-                m.put("bbox", bbox);
-                m.put(WIDTH, width);
-                m.put(HEIGHT, height);
-                m.put("status", r.status());
-                m.put("contentType", contentType);
-                m.put("elapsedMs", elapsedMs);
-                if (img != null) {
-                    m.put("paintedRatio", paintedRatio(img));
-                } else {
-                    String text = contentType.startsWith(IMAGE_PREFIX) ? "Undecodable image" : r.text().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
-                    m.put("serviceException", text);
-                }
-                return m;
+                return check(ctx, layer, bbox, dimension(args, WIDTH, 256), dimension(args, HEIGHT, 256));
             }
         };
+    }
+
+    public Map<String, Object> check(ToolContext ctx, LayerInfo layer, List<Double> bbox, int width, int height) throws java.io.IOException {
+        String path = "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + enc(layer.prefixedName()) + "&STYLES="
+                + BBOX_PARAM + bbox.stream().map(String::valueOf).collect(Collectors.joining(","))
+                + "&SRS=EPSG:4326&WIDTH=" + width + "&HEIGHT=" + height
+                + "&FORMAT=" + enc("image/png") + "&TRANSPARENT=true&EXCEPTIONS=" + enc("application/vnd.ogc.se_xml");
+        long start = System.nanoTime();
+        GeoServerHttpClient.Response r = http.get(ctx, path);
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+        String contentType = r.contentType().split(";")[0].trim();
+        BufferedImage img = r.status() == 200 && contentType.startsWith(IMAGE_PREFIX) ? ImageIO.read(new ByteArrayInputStream(r.body())) : null;
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("ok", img != null);
+        m.put(Keys.LAYER, layer.prefixedName());
+        m.put("bbox", bbox);
+        m.put(WIDTH, width);
+        m.put(HEIGHT, height);
+        m.put("status", r.status());
+        m.put("contentType", contentType);
+        m.put("elapsedMs", elapsedMs);
+        if (img != null) {
+            m.put(PAINTED_RATIO, paintedRatio(img));
+        } else {
+            String text = contentType.startsWith(IMAGE_PREFIX) ? "Undecodable image" : r.text().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+            m.put(SERVICE_EXCEPTION, text);
+        }
+        return m;
+    }
+
+    public Map<String, Object> renderSummary(ToolContext ctx, LayerInfo layer) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        ReferencedEnvelope ll = layer.getResource().getLatLonBoundingBox();
+        if (ll == null) {
+            out.put("ok", false);
+            out.put(ERROR, "no lat/lon bounds");
+            return out;
+        }
+        try {
+            Map<String, Object> full = check(ctx, layer, List.of(ll.getMinX(), ll.getMinY(), ll.getMaxX(), ll.getMaxY()), 64, 64);
+            out.put("ok", full.get("ok"));
+            for (String k : List.of(PAINTED_RATIO, SERVICE_EXCEPTION)) if (full.containsKey(k)) out.put(k, full.get(k));
+        } catch (java.io.IOException | RuntimeException e) {
+            out.put("ok", false);
+            out.put(ERROR, e.getMessage());
+        }
+        return out;
     }
 
     static double paintedRatio(BufferedImage img) {

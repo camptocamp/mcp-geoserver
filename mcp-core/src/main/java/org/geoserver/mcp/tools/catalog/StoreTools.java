@@ -2,6 +2,8 @@ package org.geoserver.mcp.tools.catalog;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
+import org.geoserver.catalog.LayerInfo;
+import java.util.function.BiFunction;
 import org.geoserver.catalog.ResourcePool;
 import java.util.Set;
 import org.geoserver.catalog.CatalogBuilder;
@@ -35,9 +37,15 @@ public class StoreTools {
     private static final String DBTYPE = "dbtype";
 
     protected final Catalog catalog;
+    private final BiFunction<ToolContext, LayerInfo, Map<String, Object>> render;
 
     public StoreTools(Catalog catalog) {
+        this(catalog, null);
+    }
+
+    public StoreTools(Catalog catalog, BiFunction<ToolContext, LayerInfo, Map<String, Object>> render) {
         this.catalog = catalog;
+        this.render = render;
     }
 
     public List<GsTool> tools() {
@@ -184,7 +192,7 @@ public class StoreTools {
                     m = createStore(ctx, ws, name, type, params);
                 }
                 if (args.isList(Keys.PUBLISH) || args.bool(Keys.PUBLISH, false)) {
-                    m.put("layers", new LayerTools(catalog).publishFromStore(ctx, catalog.getStoreByName(ws, name, StoreInfo.class), args));
+                    m.put("layers", new LayerTools(catalog, render).publishFromStore(ctx, catalog.getStoreByName(ws, name, StoreInfo.class), args));
                 }
                 return m;
             }

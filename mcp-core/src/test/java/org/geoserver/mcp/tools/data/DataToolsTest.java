@@ -1,6 +1,7 @@
 package org.geoserver.mcp.tools.data;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -184,5 +185,36 @@ public class DataToolsTest extends McpToolTestSupport {
         Map<String, Object> args = Map.of("name", "nothing");
         var context = ctx();
         assertThrows(ToolException.class, () -> runRaw(t, context, args));
+    }
+
+    @Test
+    public void renderSummaryKeepsOnlyTheVerdict() throws Exception {
+        byte[] png = halfPaintedPng();
+        try (StubHttpServer stub = new StubHttpServer(r -> new StubHttpServer.Reply(200, "image/png", png))) {
+            Map<String, Object> r = tools(stub.url()).renderSummary(ctx(), getCatalog().getLayerByName("cite:Lakes"));
+            assertEquals(Map.of("ok", true, "paintedRatio", 0.5), r);
+            assertTrue(stub.received.get(0).query(), stub.received.get(0).query().contains("WIDTH=64"));
+        }
+        String xml = "<ServiceExceptionReport><ServiceException>boom</ServiceException></ServiceExceptionReport>";
+        try (StubHttpServer stub = new StubHttpServer(r -> StubHttpServer.Reply.of(200, "application/vnd.ogc.se_xml", xml))) {
+            Map<String, Object> r = tools(stub.url()).renderSummary(ctx(), getCatalog().getLayerByName("cite:Lakes"));
+            assertEquals(false, r.get("ok"));
+            assertEquals("boom", r.get("serviceException"));
+        }
+    }
+
+    @Test
+    public void renderSummaryWithoutBoundsSaysSo() {
+        org.geoserver.catalog.LayerInfo layer = org.mockito.Mockito.mock(org.geoserver.catalog.LayerInfo.class);
+        org.mockito.Mockito.when(layer.getResource()).thenReturn(org.mockito.Mockito.mock(org.geoserver.catalog.ResourceInfo.class));
+        Map<String, Object> r = tools("").renderSummary(ctx(), layer);
+        assertEquals(Map.of("ok", false, "error", "no lat/lon bounds"), r);
+    }
+
+    @Test
+    public void renderSummaryReportsUnreachableServer() {
+        Map<String, Object> r = tools("http://127.0.0.1:1").renderSummary(ctx(), getCatalog().getLayerByName("cite:Lakes"));
+        assertEquals(false, r.get("ok"));
+        assertNotNull(r.get("error"));
     }
 }

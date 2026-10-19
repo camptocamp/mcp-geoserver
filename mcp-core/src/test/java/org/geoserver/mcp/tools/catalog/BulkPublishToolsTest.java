@@ -267,4 +267,16 @@ public class BulkPublishToolsTest extends McpToolTestSupport {
         assertEquals("geopkg", String.valueOf(ds.getConnectionParameters().get("dbtype")));
         assertEquals("file:data/gp/x.gpkg", String.valueOf(ds.getConnectionParameters().get("database")));
     }
+
+    @Test
+    public void publishCarriesARenderCheckOnlyForNewLayers() throws Exception {
+        store("rendered", Map.of("RA", POLY, "RB", POLY));
+        LayerTools layers = new LayerTools(getCatalog(), (c, l) -> Map.of("ok", true, "layer", l.prefixedName()));
+        Map<String, Object> one = Map.of("workspace", "cite", "store", "rendered", "nativeName", "RA");
+        JsonNode first = run(tool(layers.tools(), "gs_publish_layer"), one);
+        assertEquals("cite:RA", first.get("render").get("layer").asText());
+        assertNull(run(tool(layers.tools(), "gs_publish_layer"), one).get("render"));
+        JsonNode bulk = run(tool(layers.tools(), "gs_publish_layers"), Map.of("workspace", "cite", "store", "rendered", "names", List.of("RB")));
+        assertTrue(items(bulk).get("cite:RB").get("render").get("ok").asBoolean());
+    }
 }
