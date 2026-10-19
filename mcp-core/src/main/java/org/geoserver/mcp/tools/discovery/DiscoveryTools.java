@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.geoserver.mcp.tool.Args;
@@ -32,12 +33,16 @@ public class DiscoveryTools {
     }
 
     public static Optional<DataAccessFactory> vectorFactory(String type) {
+        String wanted = type.toLowerCase(Locale.ROOT);
+        List<DataAccessFactory> prefixed = new ArrayList<>();
         Iterator<DataAccessFactory> it = DataAccessFinder.getAvailableDataStores();
         while (it.hasNext()) {
             DataAccessFactory f = it.next();
-            if (f.getDisplayName() != null && f.getDisplayName().equalsIgnoreCase(type)) return Optional.of(f);
+            String name = f.getDisplayName() == null ? "" : f.getDisplayName().toLowerCase(Locale.ROOT);
+            if (name.equals(wanted)) return Optional.of(f);
+            if (name.startsWith(wanted)) prefixed.add(f);
         }
-        return Optional.empty();
+        return prefixed.size() == 1 ? Optional.of(prefixed.get(0)) : Optional.empty();
     }
 
     public static Optional<AbstractGridFormat> rasterFormat(String type) {

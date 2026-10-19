@@ -106,4 +106,12 @@ public class DiscoveryToolsTest extends McpToolTestSupport {
         assertTrue(DiscoveryTools.rasterFormat("geotiff").isPresent());
         assertTrue(DiscoveryTools.vectorFactory("nope").isEmpty());
     }
+
+    @Test
+    public void storeTypeMatchesExactNameFirstThenAUniquePrefix() {
+        assertEquals("Directory of spatial files (shapefiles)", DiscoveryTools.vectorFactory("directory").orElseThrow().getDisplayName());
+        assertEquals("PostGIS", DiscoveryTools.vectorFactory("PostGIS").orElseThrow().getDisplayName());
+        assertFalse(DiscoveryTools.vectorFactory("Post").isPresent());
+        assertEquals("GeoTIFF", DiscoveryTools.rasterFormat("geotiff").orElseThrow().getName());
+    }
 }
