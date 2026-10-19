@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.TreeSet;
 import org.geoserver.catalog.Catalog;
 import org.geoserver.catalog.FeatureTypeInfo;
@@ -37,9 +38,15 @@ public class StyleGeneratorTools {
 
     private final Catalog catalog;
     private final GsTool putStyle;
+    private final BiFunction<ToolContext, LayerInfo, Map<String, Object>> render;
 
     public StyleGeneratorTools(Catalog catalog) {
+        this(catalog, null);
+    }
+
+    public StyleGeneratorTools(Catalog catalog, BiFunction<ToolContext, LayerInfo, Map<String, Object>> render) {
         this.catalog = catalog;
+        this.render = render;
         this.putStyle = new StyleTools(catalog).tools().stream().filter(t -> t.definition().name().equals("gs_put_style")).findFirst().orElseThrow();
     }
 
@@ -60,7 +67,7 @@ public class StyleGeneratorTools {
                                 new TreeSet<>(ColorRamps.RAMPS.keySet()).toArray(String[]::new))
                         .string("name", "Style name, default <layer>_<attribute>_<method>", false)
                         .string(Keys.WORKSPACE, "Workspace for the style; omit for a global style", false)
-                        .bool("setDefault", "Also make it the layer's default style", false).build())
+                        .bool("setDefault", "Also make it the layer's default style; result confirms it with a render check", false).build())
                         .description("Generate a categorized or classified SLD from the layer's data, store it like gs_put_style and return the rules; the SLD only with verbose").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
@@ -86,7 +93,11 @@ public class StyleGeneratorTools {
         if (args.has(Keys.WORKSPACE)) putArgs.put(Keys.WORKSPACE, args.string(Keys.WORKSPACE));
         @SuppressWarnings("unchecked")
         Map<String, Object> out = new LinkedHashMap<>((Map<String, Object>) putStyle.call(ctx, new Args(putArgs)));
-        if (args.bool("setDefault", false)) setDefault(ctx, layer, args.string(Keys.WORKSPACE, null), name);
+        if (args.bool("setDefault", false)) {
+            setDefault(ctx, layer, args.string(Keys.WORKSPACE, null), name);
+            out.put("defaultStyleOf", layer.prefixedName());
+            if (render != null) out.put("render", render.apply(ctx, layer));
+        }
         out.put("rules", rules.stream().map(r -> Map.of(Keys.TITLE, r.title(), "color", r.color())).toList());
         if (ctx.verbose()) out.put("sld", body);
         return out;

@@ -31,7 +31,7 @@ public final class ToolRegistry {
         all.addAll(new LayerTools(catalog, data::renderSummary).tools());
         all.addAll(new DimensionTools(catalog).tools());
         all.addAll(new StyleTools(catalog).tools());
-        all.addAll(new StyleGeneratorTools(catalog).tools());
+        all.addAll(new StyleGeneratorTools(catalog, data::renderSummary).tools());
         all.addAll(new LayerGroupTools(catalog).tools());
         all.addAll(new DiscoveryTools().tools());
         all.addAll(data.tools());

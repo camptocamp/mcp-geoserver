@@ -84,4 +84,13 @@ public class StyleGeneratorToolsTest extends McpToolTestSupport {
         Map<String, Object> tooMany = Map.of("layer", "cite:Zones", "attribute", "pop", "method", "jenks", "classes", 30);
         assertThrows(ToolException.class, () -> run(generate, tooMany));
     }
+
+    @Test
+    public void setDefaultConfirmsTheLayerAndCarriesARenderCheck() throws Exception {
+        GsTool rendering = tool(new StyleGeneratorTools(getCatalog(), (c, l) -> Map.of("ok", true)).tools(), "gs_generate_style");
+        JsonNode r = run(rendering, Map.of("layer", "cite:Zones", "attribute", "kind", "method", "categorized", "name", "rendered_kind", "setDefault", true));
+        assertEquals("cite:Zones", r.get("defaultStyleOf").asText());
+        assertTrue(r.get("render").get("ok").asBoolean());
+        assertNull(run(rendering, Map.of("layer", "cite:Zones", "attribute", "kind", "method", "categorized", "name", "plain_kind")).get("render"));
+    }
 }

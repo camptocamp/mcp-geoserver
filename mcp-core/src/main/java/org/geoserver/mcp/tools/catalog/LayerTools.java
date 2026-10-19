@@ -99,7 +99,7 @@ public class LayerTools {
                         .string("name", "Published layer name, defaults to nativeName", false)
                         .string(Keys.TITLE, null, false)
                         .string("srs", "Declared SRS such as EPSG:3857; forces the declared CRS", false).build())
-                        .description("Publish one layer from a store; computes bounds and SRS. Compact summary with a render check, so gs_check_layer is not needed; gs_get_layer has the attributes").build();
+                        .description("Publish one layer from a store; computes bounds and SRS. Compact summary with a render check (no gs_check_layer needed); gs_get_layer has the attributes").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
