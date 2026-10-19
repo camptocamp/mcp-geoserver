@@ -2,6 +2,9 @@ package org.geoserver.mcp.tools.catalog;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
+import org.geoserver.catalog.LayerInfo;
+import java.util.function.BiFunction;
+import org.geoserver.catalog.ResourcePool;
 import java.util.Set;
 import org.geoserver.catalog.CatalogBuilder;
 import org.geoserver.catalog.CoverageStoreInfo;
@@ -31,11 +34,18 @@ import org.geoserver.mcp.tool.Keys;
 
 public class StoreTools {
     private static final String NAMESPACE = "namespace";
+    private static final String DBTYPE = "dbtype";
 
     protected final Catalog catalog;
+    private final BiFunction<ToolContext, LayerInfo, Map<String, Object>> render;
 
     public StoreTools(Catalog catalog) {
+        this(catalog, null);
+    }
+
+    public StoreTools(Catalog catalog, BiFunction<ToolContext, LayerInfo, Map<String, Object>> render) {
         this.catalog = catalog;
+        this.render = render;
     }
 
     public List<GsTool> tools() {
@@ -163,38 +173,49 @@ public class StoreTools {
                 return McpSchema.Tool.builder("gs_create_store", Schema.object()
                         .string(Keys.WORKSPACE, null, true)
                         .string("name", null, true)
-                        .string("type", "Store type name from gs_list_store_types, e.g. Shapefile, PostGIS, GeoTIFF, GeoPackage", true)
-                        .map("params", "Connection parameters. Vector: keys from gs_list_store_types. Raster: {\"url\": ...}; a GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true).build())
+                        .string("type", "Shapefile, Directory of spatial files (shapefiles), PostGIS, GeoPackage, GeoTIFF, ImageMosaic, or another name from gs_list_store_types", true)
+                        .map("params", "Shapefile, Directory, raster: {url}. PostGIS: {host, port, user, passwd, database, schema}. GeoPackage: {database}, relative paths resolve in the data directory. Other vector types: keys from gs_list_store_types. A GeoTIFF url of s3://, gs:// or http(s):// is read as a remote COG, S3 credentials come from the server", true)
+                        .boolOrStringArray(Keys.PUBLISH, "true: also publish the store's only layer; [names]: publish those tables, at most " + LayerTools.MAX_BULK, false).build())
                         .description("Create a vector or raster store; type is matched at runtime against installed GeoTools plugins").build();
             }
-            public Object call(ToolContext ctx, Args args) {
+            public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
                 String name = args.string("name");
                 String type = args.string("type");
                 Map<String, Object> params = args.map("params");
                 StoreInfo existing = catalog.getStoreByName(ws, name, StoreInfo.class);
+                Map<String, Object> m;
                 if (existing != null) {
-                    Map<String, Object> m = Views.store(existing);
+                    m = Views.store(existing);
                     m.put(Keys.CREATED, false);
-                    return m;
+                } else {
+                    m = createStore(ctx, ws, name, type, params);
                 }
-                var vector = DiscoveryTools.vectorFactory(type);
-                if (vector.isPresent()) return createVector(ctx, ws, name, type, vector.get(), params);
-                var raster = DiscoveryTools.rasterFormat(type);
-                if (raster.isPresent()) return createRaster(ctx, ws, name, raster.get(), params);
-                throw new ToolException("Unknown store type '" + type + "'. Call gs_list_store_types for the names available on this server.");
+                if (args.isList(Keys.PUBLISH) || args.bool(Keys.PUBLISH, false)) {
+                    m.put("layers", new LayerTools(catalog, render).publishFromStore(ctx, catalog.getStoreByName(ws, name, StoreInfo.class), args));
+                }
+                return m;
             }
         };
     }
 
-    Map<String, Object> createVector(ToolContext ctx, WorkspaceInfo ws, String name, String type, DataAccessFactory factory, Map<String, Object> params) {
+    Map<String, Object> createStore(ToolContext ctx, WorkspaceInfo ws, String name, String type, Map<String, Object> params) {
+        var vector = DiscoveryTools.vectorFactory(type);
+        if (vector.isPresent()) return createVector(ctx, ws, name, type, vector.get(), params);
+        var raster = DiscoveryTools.rasterFormat(type);
+        if (raster.isPresent()) return createRaster(ctx, ws, name, raster.get(), params);
+        throw new ToolException("Unknown store type '" + type + "'. Call gs_list_store_types for the names available on this server.");
+    }
+
+    Map<String, Object> createVector(ToolContext ctx, WorkspaceInfo ws, String name, String type, DataAccessFactory factory, Map<String, Object> given) {
+        Map<String, Object> params = withDefaultDbtype(factory, given);
         validateParams(type, factory, params);
         CatalogBuilder builder = new CatalogBuilder(catalog);
         builder.setWorkspace(ws);
         DataStoreInfo ds = builder.buildDataStore(name);
         ds.setType(factory.getDisplayName());
         Map<String, Serializable> conn = connectionParams(ws, params);
-        JdbcConnectionCheck.verify(factory, name, conn);
+        JdbcConnectionCheck.verify(factory, name, ResourcePool.getParams(new LinkedHashMap<>(conn), catalog.getResourceLoader()));
         ds.getConnectionParameters().putAll(conn);
         Set<String> secrets = Views.secretParams(ds);
         List<Map<String, Object>> entries = new ArrayList<>();
@@ -205,10 +226,22 @@ public class StoreTools {
         catalog.add(ds);
         Map<String, Object> m = Views.store(ds);
         m.put(Keys.CREATED, true);
-        if ("postgis".equalsIgnoreCase(String.valueOf(conn.get("dbtype")))) {
+        if ("postgis".equalsIgnoreCase(String.valueOf(conn.get(DBTYPE)))) {
             m.put("warnings", PostgisPrivileges.check(catalog, ds));
         }
         return m;
+    }
+
+    static Map<String, Object> withDefaultDbtype(DataAccessFactory factory, Map<String, Object> params) {
+        if (params.containsKey(DBTYPE)) return params;
+        for (var p : factory.getParametersInfo()) {
+            if (DBTYPE.equals(p.key) && p.sample != null) {
+                Map<String, Object> out = new LinkedHashMap<>(params);
+                out.put(DBTYPE, p.sample);
+                return out;
+            }
+        }
+        return params;
     }
 
     static void validateParams(String type, DataAccessFactory factory, Map<String, Object> params) {

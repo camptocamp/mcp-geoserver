@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import org.geoserver.catalog.Catalog;
 import org.geoserver.catalog.LayerInfo;
 import org.geoserver.mcp.tool.Args;
@@ -39,9 +40,15 @@ public class LayerTools {
     private static final String SKIPPED = "skipped";
 
     protected final Catalog catalog;
+    private final BiFunction<ToolContext, LayerInfo, Map<String, Object>> render;
 
     public LayerTools(Catalog catalog) {
+        this(catalog, null);
+    }
+
+    public LayerTools(Catalog catalog, BiFunction<ToolContext, LayerInfo, Map<String, Object>> render) {
         this.catalog = catalog;
+        this.render = render;
     }
 
     public List<GsTool> tools() {
@@ -92,14 +99,14 @@ public class LayerTools {
                         .string("name", "Published layer name, defaults to nativeName", false)
                         .string(Keys.TITLE, null, false)
                         .string("srs", "Declared SRS such as EPSG:3857; forces the declared CRS", false).build())
-                        .description("Publish one layer from a store; computes bounds and SRS. Compact summary, gs_get_layer has the attributes").build();
+                        .description("Publish one layer from a store; computes bounds and SRS. Compact summary with a render check (no gs_check_layer needed); gs_get_layer has the attributes").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
                 StoreInfo store = Lookups.store(catalog, ws.getName(), args.string(Keys.STORE));
                 if (store instanceof DataStoreInfo ds) {
                     String nativeName = args.has(Keys.NATIVE_NAME) ? args.string(Keys.NATIVE_NAME) : onlyFeatureType(ds);
-                    return publishVector(ctx, ds, new VectorRequest(nativeName, args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null));
+                    return withBulkHint(withRender(ctx, publishVector(ctx, ds, new VectorRequest(nativeName, args.string("name", null), args.string(Keys.TITLE, null), args.string("srs", null), true, null))), ds);
                 }
                 if (!(store instanceof CoverageStoreInfo)) {
                     throw new ToolException("Store '" + store.getName() + "' is a " + Views.storeKind(store) + " store; only vector and raster stores are supported");
@@ -128,7 +135,33 @@ public class LayerTools {
         LayerInfo layer = builder.buildLayer(ci);
         catalog.add(ci);
         catalog.add(layer);
-        return Views.published(catalog.getLayerByName(ws.getName() + ":" + ci.getName()), true, List.of());
+        return withRender(ctx, Views.published(catalog.getLayerByName(ws.getName() + ":" + ci.getName()), true, List.of()));
+    }
+
+    Map<String, Object> withRender(ToolContext ctx, Map<String, Object> published) {
+        if (render == null || !Boolean.TRUE.equals(published.get(Keys.CREATED))) return published;
+        LayerInfo layer = catalog.getLayerByName(String.valueOf(published.get("name")));
+        if (layer != null) published.put("render", render.apply(ctx, layer));
+        return published;
+    }
+
+    Map<String, Object> withBulkHint(Map<String, Object> published, DataStoreInfo ds) throws IOException {
+        int others = StoreTools.available(catalog, ds).size();
+        if (others > 0) published.put("hint", others + " other tables in this store are unpublished; gs_publish_layers publishes several in one call");
+        return published;
+    }
+
+    Object publishFromStore(ToolContext ctx, StoreInfo store, Args args) throws Exception {
+        if (!(store instanceof DataStoreInfo ds)) return List.of(publishCoverage(ctx, store.getWorkspace(), store, new Args(Map.of())));
+        boolean listed = args.isList(Keys.PUBLISH);
+        List<String> names = listed ? args.strings(Keys.PUBLISH) : StoreTools.available(catalog, ds);
+        if (!listed && names.size() != 1) {
+            return Map.of(SKIPPED, names.size() + " unpublished tables; pass publish: [names] or call gs_publish_layers");
+        }
+        if (names.size() > MAX_BULK) return Map.of(SKIPPED, names.size() + " names; at most " + MAX_BULK + " per call");
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (String name : names) items.add(publishItem(ctx, ds, name, false));
+        return items;
     }
 
     static final int MAX_BULK = 50;
@@ -153,7 +186,7 @@ public class LayerTools {
                         .stringArray("names", "Feature type names to publish; see gs_get_store available", false)
                         .bool("all", "Publish every unpublished feature type of the store", false)
                         .bool("includeNonSpatial", "Also publish tables without a geometry column, default false", false).build())
-                        .description("Publish up to " + MAX_BULK + " feature types of one store; per-item success or error, geometryless tables skipped unless includeNonSpatial").build();
+                        .description("Publish up to " + MAX_BULK + " feature types of one store; per-item success or error with a render check, geometryless tables skipped unless includeNonSpatial").build();
             }
             public Object call(ToolContext ctx, Args args) throws Exception {
                 WorkspaceInfo ws = Lookups.workspace(catalog, args.string(Keys.WORKSPACE));
@@ -185,7 +218,7 @@ public class LayerTools {
         long start = System.nanoTime();
         Map<String, Object> item;
         try {
-            item = publishVector(ctx, ds, new VectorRequest(name, null, null, null, nonSpatial, null));
+            item = withRender(ctx, publishVector(ctx, ds, new VectorRequest(name, null, null, null, nonSpatial, null)));
         } catch (Skipped e) {
             item = new java.util.LinkedHashMap<>(Map.of("name", name, SKIPPED, true, "warnings", List.of(e.getMessage())));
         } catch (Exception e) {

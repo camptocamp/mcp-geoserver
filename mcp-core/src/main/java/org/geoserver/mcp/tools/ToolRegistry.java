@@ -24,16 +24,17 @@ public final class ToolRegistry {
 
     public static List<GsTool> all(Catalog catalog, GeoServer geoServer, GeoServerHttpClient http, ObjectMapper json) {
         List<GsTool> all = new ArrayList<>();
+        DataTools data = new DataTools(catalog, http);
         all.addAll(new AdminTools(catalog, geoServer).tools());
         all.addAll(new WorkspaceTools(catalog).tools());
-        all.addAll(new StoreTools(catalog).tools());
-        all.addAll(new LayerTools(catalog).tools());
+        all.addAll(new StoreTools(catalog, data::renderSummary).tools());
+        all.addAll(new LayerTools(catalog, data::renderSummary).tools());
         all.addAll(new DimensionTools(catalog).tools());
         all.addAll(new StyleTools(catalog).tools());
-        all.addAll(new StyleGeneratorTools(catalog).tools());
+        all.addAll(new StyleGeneratorTools(catalog, data::renderSummary).tools());
         all.addAll(new LayerGroupTools(catalog).tools());
         all.addAll(new DiscoveryTools().tools());
-        all.addAll(new DataTools(catalog, http).tools());
+        all.addAll(data.tools());
         all.addAll(new GwcTools(http, json).tools());
         return List.copyOf(all);
     }

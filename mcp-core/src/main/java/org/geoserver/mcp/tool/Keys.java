@@ -15,6 +15,7 @@ public final class Keys {
     public static final String LAYER = "layer";
     public static final String LAYERS = "layers";
     public static final String NATIVE_NAME = "nativeName";
+    public static final String PUBLISH = "publish";
     public static final String RASTER = "raster";
     public static final String REST_WORKSPACES = "/rest/workspaces/";
     public static final String STORE = "store";

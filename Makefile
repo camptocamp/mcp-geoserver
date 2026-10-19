@@ -15,7 +15,7 @@ GS_AUTH  ?= admin:geoserver
 
 .DEFAULT_GOAL := help
 .PHONY: help start run stop restart recreate remove logs wait status shell web \
-        build test it clean
+        build test it clean scenarios
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -64,13 +64,16 @@ wait: ## Wait until GeoServer answers (polls from inside the container)
 
 ## --- build / test ---
 build: ## Package the extension jars (skips tests)
-	./mvnw -q -DskipTests package
+	./mvnw -q -DskipTests clean package
 
 test: ## Maven unit tests
 	./mvnw -q test
 
 it: ## Maven integration tests (mcp-it, needs Docker)
-	./mvnw -q verify -Pit
+	./mvnw -q clean verify -Pit
+
+scenarios: start ## Four model-driven MCP scenarios (MODEL=, BUDGET_EUR= cap per scenario, EUR_PER_USD= rate; needs make build once)
+	./scripts/scenarios.sh
 
 clean: ## Maven clean
 	./mvnw -q clean
