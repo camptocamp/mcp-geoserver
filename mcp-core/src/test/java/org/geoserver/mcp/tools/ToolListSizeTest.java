@@ -14,7 +14,7 @@ import org.geoserver.mcp.tool.ToolAdapter;
 import org.junit.jupiter.api.Test;
 
 class ToolListSizeTest {
-    // ~4 chars per token; raise deliberately when a new tool earns its place.
+    // ~2.7 chars per token for these JSON schemas (measured); raise deliberately when a new tool earns its place.
     static final int MAX_TOOLS_LIST_CHARS = 22_000;
 
     @Test
