@@ -113,5 +113,6 @@ public class DiscoveryToolsTest extends McpToolTestSupport {
         assertEquals("PostGIS", DiscoveryTools.vectorFactory("PostGIS").orElseThrow().getDisplayName());
         assertFalse(DiscoveryTools.vectorFactory("Post").isPresent());
         assertEquals("GeoTIFF", DiscoveryTools.rasterFormat("geotiff").orElseThrow().getName());
+        assertEquals(1, DiscoveryTools.vectorTypes("Directory").size());
     }
 }

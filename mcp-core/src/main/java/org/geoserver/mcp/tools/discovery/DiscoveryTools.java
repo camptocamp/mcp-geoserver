@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import org.geoserver.mcp.tool.Args;
 import org.geoserver.mcp.tool.GsTool;
 import org.geoserver.mcp.tool.Schema;
@@ -33,23 +34,26 @@ public class DiscoveryTools {
     }
 
     public static Optional<DataAccessFactory> vectorFactory(String type) {
-        String wanted = type.toLowerCase(Locale.ROOT);
-        List<DataAccessFactory> prefixed = new ArrayList<>();
-        Iterator<DataAccessFactory> it = DataAccessFinder.getAvailableDataStores();
-        while (it.hasNext()) {
-            DataAccessFactory f = it.next();
-            String name = f.getDisplayName() == null ? "" : f.getDisplayName().toLowerCase(Locale.ROOT);
-            if (name.equals(wanted)) return Optional.of(f);
-            if (name.startsWith(wanted)) prefixed.add(f);
-        }
-        return prefixed.size() == 1 ? Optional.of(prefixed.get(0)) : Optional.empty();
+        List<DataAccessFactory> all = new ArrayList<>();
+        DataAccessFinder.getAvailableDataStores().forEachRemaining(all::add);
+        return byName(all, DataAccessFactory::getDisplayName, type);
     }
 
     public static Optional<AbstractGridFormat> rasterFormat(String type) {
-        for (Format f : GridFormatFinder.getFormatArray()) {
-            if (f instanceof AbstractGridFormat g && g.getName() != null && g.getName().equalsIgnoreCase(type)) return Optional.of(g);
+        List<AbstractGridFormat> all = new ArrayList<>();
+        for (Format f : GridFormatFinder.getFormatArray()) if (f instanceof AbstractGridFormat g) all.add(g);
+        return byName(all, AbstractGridFormat::getName, type);
+    }
+
+    static <T> Optional<T> byName(List<T> candidates, Function<T, String> name, String type) {
+        String wanted = type.toLowerCase(Locale.ROOT);
+        List<T> prefixed = new ArrayList<>();
+        for (T c : candidates) {
+            String n = name.apply(c) == null ? "" : name.apply(c).toLowerCase(Locale.ROOT);
+            if (n.equals(wanted)) return Optional.of(c);
+            if (n.startsWith(wanted)) prefixed.add(c);
         }
-        return Optional.empty();
+        return prefixed.size() == 1 ? Optional.of(prefixed.get(0)) : Optional.empty();
     }
 
     GsTool storeTypes() {
@@ -75,12 +79,12 @@ public class DiscoveryTools {
     }
 
     static List<Map<String, Object>> vectorTypes(String type) {
+        if (type != null) return vectorFactory(type).map(f -> List.of(vectorDetail(f))).orElse(List.of());
         List<Map<String, Object>> out = new ArrayList<>();
         Iterator<DataAccessFactory> it = DataAccessFinder.getAvailableDataStores();
         while (it.hasNext()) {
             DataAccessFactory f = it.next();
-            if (type != null && !type.equalsIgnoreCase(f.getDisplayName())) continue;
-            out.add(type == null ? summary(f.getDisplayName(), requiredKeys(f)) : vectorDetail(f));
+            out.add(summary(f.getDisplayName(), requiredKeys(f)));
         }
         return out;
     }
@@ -120,11 +124,9 @@ public class DiscoveryTools {
     }
 
     static List<Map<String, Object>> rasterTypes(String type) {
+        if (type != null) return rasterFormat(type).map(f -> List.of(rasterDetail(f))).orElse(List.of());
         List<Map<String, Object>> out = new ArrayList<>();
-        for (Format f : GridFormatFinder.getFormatArray()) {
-            if (type != null && !type.equalsIgnoreCase(f.getName())) continue;
-            out.add(type == null ? summary(f.getName(), List.of(URL)) : rasterDetail(f));
-        }
+        for (Format f : GridFormatFinder.getFormatArray()) out.add(summary(f.getName(), List.of(URL)));
         return out;
     }
 
