@@ -4,7 +4,9 @@ set -euo pipefail
 GS_URL=${GS_URL:-http://localhost:8080/geoserver}
 GS_AUTH=${GS_AUTH:-admin:geoserver}
 MODEL=${MODEL:-claude-haiku-5-5}
-BUDGET=${BUDGET:-0.50}
+BUDGET_EUR=${BUDGET_EUR:-0.50}
+# The claude CLI reports and caps cost in USD only.
+EUR_PER_USD=${EUR_PER_USD:-0.86}
 WS=scn$(date +%s)
 
 host=$(sed -E 's#^[a-z]+://([^/:]+).*#\1#' <<<"$GS_URL")
@@ -34,18 +36,18 @@ scenarios=(
 )
 
 failed=0
-printf '%-8s %-5s %6s %9s %8s\n' scenario ok turns tokens usd
+printf '%-8s %-5s %6s %9s %8s\n' scenario ok turns tokens eur
 for s in "${scenarios[@]}"; do
   name=${s%%|*} prompt=${s#*|}
   # --tools "" removes Bash/WebFetch: otherwise the model can curl REST and pass without using MCP.
   out=$(cd "$work" && claude -p "$prompt" --output-format json --model "$MODEL" \
     ${ANTHROPIC_API_KEY:+--bare} --setting-sources "" --tools "" \
     --strict-mcp-config --mcp-config "$work/mcp.json" --allowedTools "mcp__gs__*" \
-    --max-budget-usd "$BUDGET" 2>/dev/null) || out={}
+    --max-budget-usd "$(awk -v e="$BUDGET_EUR" -v r="$EUR_PER_USD" 'BEGIN{print e/r}')" 2>/dev/null) || out={}
   ok=no
   "check_$name" && ok=yes || failed=1
-  jq -r --arg n "$name" --arg ok "$ok" \
-    '[$n, $ok, (.num_turns // 0), ((.usage.input_tokens // 0) + (.usage.cache_read_input_tokens // 0) + (.usage.cache_creation_input_tokens // 0) + (.usage.output_tokens // 0)), (.total_cost_usd // 0)] | @tsv' \
+  jq -r --arg n "$name" --arg ok "$ok" --argjson r "$EUR_PER_USD" \
+    '[$n, $ok, (.num_turns // 0), ((.usage.input_tokens // 0) + (.usage.cache_read_input_tokens // 0) + (.usage.cache_creation_input_tokens // 0) + (.usage.output_tokens // 0)), ((.total_cost_usd // 0) * $r)] | @tsv' \
     <<<"$out" | awk -F'\t' '{printf "%-8s %-5s %6s %9s %8.4f\n",$1,$2,$3,$4,$5}'
 done
 exit $failed
