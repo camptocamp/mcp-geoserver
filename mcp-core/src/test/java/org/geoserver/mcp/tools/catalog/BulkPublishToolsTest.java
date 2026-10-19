@@ -256,4 +256,15 @@ public class BulkPublishToolsTest extends McpToolTestSupport {
                 Map.of("workspace", "cite", "store", "hinted", "nativeName", "HB"));
         assertNull(last.get("hint"));
     }
+
+    @Test
+    public void geoPackageDefaultsDbtypeAndResolvesDataDirectoryPaths() throws Exception {
+        new File(getTestData().getDataDirectoryRoot(), "data/gp").mkdirs();
+        JsonNode r = run(tool(new StoreTools(getCatalog()).tools(), "gs_create_store"), Map.of(
+                "workspace", "cite", "name", "gp", "type", "GeoPackage", "params", Map.of("database", "file:data/gp/x.gpkg")));
+        assertTrue(r.get("created").asBoolean());
+        DataStoreInfo ds = getCatalog().getDataStoreByName("cite", "gp");
+        assertEquals("geopkg", String.valueOf(ds.getConnectionParameters().get("dbtype")));
+        assertEquals("file:data/gp/x.gpkg", String.valueOf(ds.getConnectionParameters().get("database")));
+    }
 }
