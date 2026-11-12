@@ -1,4 +1,4 @@
-FROM geoservercloud/geoserver-cloud-rest:3.0.2
+FROM geoservercloud/geoserver-cloud-rest:3.0.2.1
 ARG LIBS=libs
 COPY ${LIBS}/*.jar /tmp/mcp-libs/
 # Skip artifacts the base already ships in the same major version (jackson 2, reactor): its copy comes first in classpath.idx.
