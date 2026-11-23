@@ -262,22 +262,39 @@ public class StyleTools {
         Matcher m = HREF.matcher(body);
         while (m.find()) {
             String href = m.group(2);
-            if (!resolves(href.contains("?") ? href.substring(0, href.indexOf('?')) : href, dd, ws)) out.add(href);
+            String ref = before(before(href, '?'), '#');
+            if (!ref.contains("${") && !resolves(ref, dd, ws)) out.add(href);
         }
         return new ArrayList<>(out);
     }
 
+    private static String before(String s, char c) {
+        int i = s.indexOf(c);
+        return i < 0 ? s : s.substring(0, i);
+    }
+
     static boolean resolves(String ref, GeoServerDataDirectory dd, WorkspaceInfo ws) {
         if (ref.isBlank()) return false;
-        if (ref.startsWith("file:")) return new File(URI.create(ref.replace(" ", "%20"))).exists();
+        if (ref.startsWith("file:")) {
+            try {
+                return fileOrSpriteExists(new File(URI.create(ref.replace(" ", "%20"))));
+            } catch (IllegalArgumentException e) {
+                return false;
+            }
+        }
         if (ref.contains("://")) return true;
-        if (ref.startsWith("/")) return new File(ref).exists();
+        if (ref.startsWith("/")) return fileOrSpriteExists(new File(ref));
         try {
             Resource r = ws == null ? dd.getStyles(ref) : dd.getStyles(ws, ref);
             return r.getType() != Resource.Type.UNDEFINED;
         } catch (RuntimeException e) {
             return false;
         }
+    }
+
+    // An mbsprite href names the sprite base; GeoServer reads <base>.json and <base>.png.
+    private static boolean fileOrSpriteExists(File f) {
+        return f.exists() || new File(f.getPath() + ".json").exists();
     }
 
     static List<String> missingAttributes(StyledLayerDescriptor sld, FeatureTypeInfo ft) throws IOException {
