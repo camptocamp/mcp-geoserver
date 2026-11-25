@@ -207,6 +207,23 @@ public class CatalogReadToolsTest extends McpToolTestSupport {
     }
 
     @Test
+    public void validateStyleResolvesMbspriteBaseAndReportsMissingSprite() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("sprites");
+        java.nio.file.Files.writeString(dir.resolve("PlanIgn.json"), "{}");
+        String fragment = "#icon=${strURLEncode('Aeroport')}&amp;size=${strURLEncode(0.5)}";
+        JsonNode ok = validate(Map.of("body", SLD10.replace("HREF", "file:" + dir + "/PlanIgn" + fragment).replace("LABELFIELD", "NAME")));
+        assertEquals(ok.toString(), 0, ok.get("unresolvedGraphics").size());
+        JsonNode missing = validate(Map.of("body", SLD10.replace("HREF", "file:" + dir + "/Other" + fragment).replace("LABELFIELD", "NAME")));
+        assertEquals(missing.toString(), 1, missing.get("unresolvedGraphics").size());
+    }
+
+    @Test
+    public void validateStyleSkipsTemplatedGraphicPath() throws Exception {
+        JsonNode r = validate(Map.of("body", SLD10.replace("HREF", "icons/${NAME}.svg").replace("LABELFIELD", "NAME")));
+        assertEquals(r.toString(), 0, r.get("unresolvedGraphics").size());
+    }
+
+    @Test
     public void validateStyleNamesUnknownFunctionsEvenWhenParseFails() throws Exception {
         String body = SLD10.replace("<ogc:PropertyName>LABELFIELD</ogc:PropertyName>",
                 "<ogc:Function name=\"array_to_string\"><ogc:PropertyName>NAME</ogc:PropertyName></ogc:Function>").replace("HREF", "x.svg");
