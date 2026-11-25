@@ -19,13 +19,13 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <gs.version>3.0.1</gs.version>
-    <gt.version>35.1</gt.version>
+    <gs.version>3.0.2</gs.version>
+    <gt.version>35.2</gt.version>
     <gwc.version>2.0.1</gwc.version>
     <spring.version>7.0.9</spring.version>
     <spring.security.version>7.1.1</spring.security.version>
-    <mcp.sdk.version>2.0.1</mcp.sdk.version>
-    <jackson.version>2.22.3</jackson.version>
+    <mcp.sdk.version>2.1.0</mcp.sdk.version>
+    <jackson.version>2.22.4</jackson.version>
     <spring-boot.version>4.1.1</spring-boot.version>
     <wicket.version>10.11.0</wicket.version>
     <jakarta.servlet.version>6.1.0</jakarta.servlet.version>
@@ -36,7 +36,7 @@
     <jsoup.version>1.23.2</jsoup.version>
     <httpclient5.version>5.6.5</httpclient5.version>
     <jacoco.version>0.8.15</jacoco.version>
-    <cyclonedx.version>2.9.1</cyclonedx.version>
+    <cyclonedx.version>2.9.3</cyclonedx.version>
     <sonar.projectKey>camptocamp_mcp-geoserver_cfb24ca6-0f59-4d8a-b788-161c34a2140b</sonar.projectKey>
     <sonar.projectName>mcp-geoserver</sonar.projectName>
     <sonar.host.url>https://sast.camptocamp.net</sonar.host.url>
